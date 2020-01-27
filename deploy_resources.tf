@@ -70,7 +70,7 @@ resource "azurerm_subnet" "subnet" {
 # allow ssh
 
 resource "azurerm_network_security_group" "nsg" {
-    name                = "${var.project_id}--nsg"
+    name                = "${var.project_id}-nsg"
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
     
@@ -83,7 +83,7 @@ resource "azurerm_network_security_group" "nsg" {
         source_port_range          = "*"
         destination_port_range     = "22"
         source_address_prefix      = "*"
-        destination_address_prefix = "*"
+        destination_address_prefix = "10.1.1.0/24"
     }
 
     tags = {
@@ -188,7 +188,7 @@ resource "random_id" "randomId" {
 }
 
 resource "azurerm_storage_account" "storageaccount" {
-    name                        = "diag-${random_id.randomId.hex}"
+    name                        = "diag${random_id.randomId.hex}"
     resource_group_name         = azurerm_resource_group.resourcegroup.name
     location                    = var.region
     account_replication_type    = "LRS"
