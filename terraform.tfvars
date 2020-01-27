@@ -30,5 +30,5 @@ ad_instance_type   = "Basic_A0" # "Standard_D2_v3"
 
 # Environment
 ssh_pub_key_path = "~/.ssh/id_rsa.pub"
-temp_password = "***REMOVED***"
+temp_password = "UxmD4R68nZnvr3Zr"
 pass_auth_disabled = false

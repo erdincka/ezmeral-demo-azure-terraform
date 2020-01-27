@@ -16,11 +16,11 @@ variable "worker_count" { default = 3 }
 variable "user" { }
 
 # Azure VM Sizes
-variable "gtw_instance_type" { }
-variable "ctr_instance_type" { }
-variable "wkr_instance_type" { }
-variable "nfs_instance_type" { }
-variable "ad_instance_type" { }
+variable "gtw_instance_type" { default = "Standard_D16_v3" }
+variable "ctr_instance_type" { default = "Standard_D16_v3" }
+variable "wkr_instance_type" { default = "Standard_D16_v3" }
+variable "nfs_instance_type" { default = "Standard_D2_v3" }
+variable "ad_instance_type" { default = "Standard_D2_v3" }
 
 # environment
 variable "ssh_pub_key_path" { }
@@ -232,7 +232,7 @@ resource "azurerm_virtual_machine" "controllervm" {
     }
 
     os_profile {
-        computer_name  = "bluedata-controller"
+        computer_name  = "controller"
         admin_username = var.user
         admin_password = var.temp_password
     }
@@ -278,7 +278,7 @@ resource "azurerm_virtual_machine" "gatewayvm" {
     }
 
     os_profile {
-        computer_name  = "bluedata-gateway"
+        computer_name  = "gateway"
         admin_username = var.user
         admin_password = var.temp_password
     }
@@ -304,14 +304,15 @@ resource "azurerm_virtual_machine" "gatewayvm" {
 
 # Worker VMs
 resource "azurerm_virtual_machine" "workers" {
+    name                  = "worker${count.index + 1}-vm"
     count                 = var.worker_count
     location              = var.region
     resource_group_name   = azurerm_resource_group.resourcegroup.name
-    network_interface_ids = [azurerm_network_interface.workernics.id]
+    network_interface_ids = [element(azurerm_network_interface.workernics.*.id, count.index)]
     vm_size               = var.wkr_instance_type
 
     storage_os_disk {
-        name              = "controllerOSDisk"
+        name              = "worker${count.index + 1}OSDisk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
         managed_disk_type = "Standard_LRS"
@@ -325,7 +326,7 @@ resource "azurerm_virtual_machine" "workers" {
     }
 
     os_profile {
-        computer_name  = "bluedata-worker=${count.index + 1}"
+        computer_name  = "worker${count.index + 1}"
         admin_username = var.user
         admin_password = var.temp_password
     }
@@ -351,9 +352,9 @@ resource "azurerm_virtual_machine" "workers" {
 
 # outputs
 output "controller_public_ip" {
-  value = data.azurerm_public_ip.controllerpublicip.ip_address
+  value = azurerm_public_ip.controllerpublicip.ip_address
 }
 
 output "gateway_public_ip" {
-  value = data.azurerm_public_ip.gatewaypublicip.ip_address
+  value = azurerm_public_ip.gatewaypublicip.ip_address
 }
