@@ -47,7 +47,7 @@ resource "azurerm_resource_group" "resourcegroup" {
 
 # Create a virtual network within the resource group
 resource "azurerm_virtual_network" "network" {
-    name                = "vnet0"
+    name                = "${var.project_id}-vnet"
     address_space       = ["10.1.0.0/16"]
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
@@ -60,7 +60,7 @@ resource "azurerm_virtual_network" "network" {
 
 # Create the subnet
 resource "azurerm_subnet" "subnet" {
-    name                 = "subnet0"
+    name                 = "${var.project_id}-subnet"
     resource_group_name  = azurerm_resource_group.resourcegroup.name
     virtual_network_name = azurerm_virtual_network.network.name
     address_prefix       = "10.1.1.0/24"
@@ -70,7 +70,7 @@ resource "azurerm_subnet" "subnet" {
 # allow ssh
 
 resource "azurerm_network_security_group" "nsg" {
-    name                = "NSG"
+    name                = "${var.project_id}--nsg"
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
     
@@ -94,7 +94,7 @@ resource "azurerm_network_security_group" "nsg" {
 
 # Controller Public IP
 resource "azurerm_public_ip" "controllerpublicip" {
-    name                         = "controllerIP"
+    name                         = "controller-ip"
     location                     = var.region
     resource_group_name          = azurerm_resource_group.resourcegroup.name
     allocation_method            = "Dynamic"
@@ -107,7 +107,7 @@ resource "azurerm_public_ip" "controllerpublicip" {
 
 # Gateway Public IP
 resource "azurerm_public_ip" "gatewaypublicip" {
-    name                         = "gatewayIP"
+    name                         = "gateway-ip"
     location                     = var.region
     resource_group_name          = azurerm_resource_group.resourcegroup.name
     allocation_method            = "Dynamic"
@@ -120,13 +120,13 @@ resource "azurerm_public_ip" "gatewaypublicip" {
 
 # Controller NIC
 resource "azurerm_network_interface" "controllernic" {
-    name                        = "controllerNIC"
+    name                        = "controller-nic"
     location                    = var.region
     resource_group_name         = azurerm_resource_group.resourcegroup.name
     network_security_group_id   = azurerm_network_security_group.nsg.id
 
     ip_configuration {
-        name                          = "controllerNICConfiguration"
+        name                          = "controller-nic-configuration"
         subnet_id                     = azurerm_subnet.subnet.id
         private_ip_address_allocation = "Dynamic"
         public_ip_address_id          = azurerm_public_ip.controllerpublicip.id
@@ -140,13 +140,13 @@ resource "azurerm_network_interface" "controllernic" {
 
 # Gateway NIC
 resource "azurerm_network_interface" "gatewaynic" {
-    name                        = "gatewayNIC"
+    name                        = "gateway-nic"
     location                    = var.region
     resource_group_name         = azurerm_resource_group.resourcegroup.name
     network_security_group_id   = azurerm_network_security_group.nsg.id
 
     ip_configuration {
-        name                          = "gatewayNICConfiguration"
+        name                          = "gateway-nic-configuration"
         subnet_id                     = azurerm_subnet.subnet.id
         private_ip_address_allocation = "Dynamic"
         public_ip_address_id          = azurerm_public_ip.gatewaypublicip.id
@@ -161,13 +161,13 @@ resource "azurerm_network_interface" "gatewaynic" {
 # Worker NICs
 resource "azurerm_network_interface" "workernics" {
     count                       = var.worker_count
-    name                        = "workerNIC-${count.index + 1}"
+    name                        = "worker${count.index + 1}-nic"
     location                    = var.region
     resource_group_name         = azurerm_resource_group.resourcegroup.name
     network_security_group_id   = azurerm_network_security_group.nsg.id
 
     ip_configuration {
-        name                          = "gatewayNICConfiguration-${count.index + 1}"
+        name                          = "worker${count.index + 1}-nic-configuration"
         subnet_id                     = azurerm_subnet.subnet.id
         private_ip_address_allocation = "Dynamic"
     }
@@ -188,7 +188,7 @@ resource "random_id" "randomId" {
 }
 
 resource "azurerm_storage_account" "storageaccount" {
-    name                        = "diag${random_id.randomId.hex}"
+    name                        = "diag-${random_id.randomId.hex}"
     resource_group_name         = azurerm_resource_group.resourcegroup.name
     location                    = var.region
     account_replication_type    = "LRS"
@@ -210,15 +210,15 @@ data "local_file" "ssh_pub_key" {
 # Create VMs
 
 # Controller VM
-resource "azurerm_virtual_machine" "controllervm" {
-    name                  = "controllervm"
+resource "azurerm_virtual_machine" "controller-vm" {
+    name                  = "controller-vm"
     location              = var.region
     resource_group_name   = azurerm_resource_group.resourcegroup.name
     network_interface_ids = [azurerm_network_interface.controllernic.id]
     vm_size               = var.ctr_instance_type
 
     storage_os_disk {
-        name              = "controllerOSDisk"
+        name              = "controller-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
         managed_disk_type = "Standard_LRS"
@@ -256,15 +256,15 @@ resource "azurerm_virtual_machine" "controllervm" {
     }
 }
 
-resource "azurerm_virtual_machine" "gatewayvm" {
-    name                  = "gatewayvm"
+resource "azurerm_virtual_machine" "gateway-vm" {
+    name                  = "gateway-vm"
     location              = var.region
     resource_group_name   = azurerm_resource_group.resourcegroup.name
     network_interface_ids = [azurerm_network_interface.gatewaynic.id]
     vm_size               = var.gtw_instance_type
 
     storage_os_disk {
-        name              = "gatewayOSDisk"
+        name              = "gateway-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
         managed_disk_type = "Standard_LRS"
@@ -312,7 +312,7 @@ resource "azurerm_virtual_machine" "workers" {
     vm_size               = var.wkr_instance_type
 
     storage_os_disk {
-        name              = "worker${count.index + 1}OSDisk"
+        name              = "worker${count.index + 1}-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
         managed_disk_type = "Standard_LRS"
@@ -351,10 +351,25 @@ resource "azurerm_virtual_machine" "workers" {
 }
 
 # outputs
+
+# workaround since public IP cannot be get before attaching to an online VM 
+# https://github.com/terraform-providers/terraform-provider-azurerm/issues/764#issuecomment-365019882
+
+data "azurerm_public_ip" "ctr_ip" {
+  name                = azurerm_public_ip.controllerpublicip.name
+  resource_group_name = azurerm_virtual_machine.controller-vm.resource_group_name
+}
+
 output "controller_public_ip" {
-  value = azurerm_public_ip.controllerpublicip.ip_address
+  value = data.azurerm_public_ip.ctr_ip.ip_address
+}
+
+
+data "azurerm_public_ip" "gw_ip" {
+  name                = azurerm_public_ip.gatewaypublicip.name
+  resource_group_name = azurerm_virtual_machine.gateway-vm.resource_group_name
 }
 
 output "gateway_public_ip" {
-  value = azurerm_public_ip.gatewaypublicip.ip_address
+  value = data.azurerm_public_ip.gw_ip.ip_address
 }

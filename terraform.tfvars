@@ -13,8 +13,8 @@ region = "eastus2"
 # Set this to something meaningful.  it is used as a tag in aws 
 #
 
-project_id         = "scratch"
-user               = "ekaya"
+project_id         = "bluedata"
+user               = "erdincka"
 
 # specify how many BlueData workers you want
 worker_count = 3
