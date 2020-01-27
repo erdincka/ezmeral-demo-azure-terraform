@@ -9,12 +9,11 @@ variable "client_secret" { }
 variable "tenant_id" { }
 
 # BlueData cluster variables
-# variable "controller" { }
-# variable "gateway" { }
-# variable "worker1" { }
+#variable "controller" { }
+#variable "gateway" { }
+#variable "worker1" { }
 variable "worker_count" { default = 3 }
 variable "user" { }
-
 
 # Azure VM Sizes
 variable "gtw_instance_type" { }
@@ -25,6 +24,8 @@ variable "ad_instance_type" { }
 
 # environment
 variable "ssh_pub_key_path" { }
+variable "temp_password" { }
+variable "pass_auth_disabled" { default = true }
 
 provider "azurerm" {
     version = "=1.38.0"
@@ -46,7 +47,7 @@ resource "azurerm_resource_group" "resourcegroup" {
 
 # Create a virtual network within the resource group
 resource "azurerm_virtual_network" "network" {
-    name                = "${var.project_id}-vnet"
+    name                = "vnet0"
     address_space       = ["10.1.0.0/16"]
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
@@ -59,7 +60,7 @@ resource "azurerm_virtual_network" "network" {
 
 # Create the subnet
 resource "azurerm_subnet" "subnet" {
-    name                 = "${var.project_id}-subnet0"
+    name                 = "subnet0"
     resource_group_name  = azurerm_resource_group.resourcegroup.name
     virtual_network_name = azurerm_virtual_network.network.name
     address_prefix       = "10.1.1.0/24"
@@ -69,7 +70,7 @@ resource "azurerm_subnet" "subnet" {
 # allow ssh
 
 resource "azurerm_network_security_group" "nsg" {
-    name                = "${var.project_id}-NSG"
+    name                = "NSG"
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
     
@@ -137,7 +138,7 @@ resource "azurerm_network_interface" "controllernic" {
     }
 }
 
-# Controller NIC
+# Gateway NIC
 resource "azurerm_network_interface" "gatewaynic" {
     name                        = "gatewayNIC"
     location                    = var.region
@@ -157,6 +158,25 @@ resource "azurerm_network_interface" "gatewaynic" {
     }
 }
 
+# Worker NICs
+resource "azurerm_network_interface" "workernics" {
+    count                       = var.worker_count
+    name                        = "workerNIC-${count.index + 1}"
+    location                    = var.region
+    resource_group_name         = azurerm_resource_group.resourcegroup.name
+    network_security_group_id   = azurerm_network_security_group.nsg.id
+
+    ip_configuration {
+        name                          = "gatewayNICConfiguration-${count.index + 1}"
+        subnet_id                     = azurerm_subnet.subnet.id
+        private_ip_address_allocation = "Dynamic"
+    }
+
+    tags = {
+        environment = var.project_id,
+        user = var.user
+    }
+}
 
 # Random ID generator for storage account
 resource "random_id" "randomId" {
@@ -189,8 +209,9 @@ data "local_file" "ssh_pub_key" {
 
 # Create VMs
 
+# Controller VM
 resource "azurerm_virtual_machine" "controllervm" {
-    name                  = "${var.project_id}-controllervm"
+    name                  = "controllervm"
     location              = var.region
     resource_group_name   = azurerm_resource_group.resourcegroup.name
     network_interface_ids = [azurerm_network_interface.controllernic.id]
@@ -213,10 +234,11 @@ resource "azurerm_virtual_machine" "controllervm" {
     os_profile {
         computer_name  = "bluedata-controller"
         admin_username = var.user
+        admin_password = var.temp_password
     }
 
     os_profile_linux_config {
-        disable_password_authentication = true
+        disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
             key_data = data.local_file.ssh_pub_key.content
@@ -235,7 +257,7 @@ resource "azurerm_virtual_machine" "controllervm" {
 }
 
 resource "azurerm_virtual_machine" "gatewayvm" {
-    name                  = "${var.project_id}-gatewayvm"
+    name                  = "gatewayvm"
     location              = var.region
     resource_group_name   = azurerm_resource_group.resourcegroup.name
     network_interface_ids = [azurerm_network_interface.gatewaynic.id]
@@ -258,10 +280,58 @@ resource "azurerm_virtual_machine" "gatewayvm" {
     os_profile {
         computer_name  = "bluedata-gateway"
         admin_username = var.user
+        admin_password = var.temp_password
     }
 
     os_profile_linux_config {
-        disable_password_authentication = true
+        disable_password_authentication = var.pass_auth_disabled
+        ssh_keys {
+            path     = "/home/${var.user}/.ssh/authorized_keys"
+            key_data = data.local_file.ssh_pub_key.content
+        }
+    }
+
+    boot_diagnostics {
+        enabled     = "true"
+        storage_uri = azurerm_storage_account.storageaccount.primary_blob_endpoint
+    }
+
+    tags = {
+        environment = var.project_id,
+        user = var.user
+    }
+}
+
+# Worker VMs
+resource "azurerm_virtual_machine" "workers" {
+    count                 = var.worker_count
+    location              = var.region
+    resource_group_name   = azurerm_resource_group.resourcegroup.name
+    network_interface_ids = [azurerm_network_interface.workernics.id]
+    vm_size               = var.wkr_instance_type
+
+    storage_os_disk {
+        name              = "controllerOSDisk"
+        caching           = "ReadWrite"
+        create_option     = "FromImage"
+        managed_disk_type = "Standard_LRS"
+    }
+
+    storage_image_reference {
+        publisher = "OpenLogic"
+        offer     = "CentOS"
+        sku       = "7.5"
+        version   = "latest"
+    }
+
+    os_profile {
+        computer_name  = "bluedata-worker=${count.index + 1}"
+        admin_username = var.user
+        admin_password = var.temp_password
+    }
+
+    os_profile_linux_config {
+        disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
             key_data = data.local_file.ssh_pub_key.content
@@ -281,9 +351,9 @@ resource "azurerm_virtual_machine" "gatewayvm" {
 
 # outputs
 output "controller_public_ip" {
-  value = azurerm_public_ip.controllerpublicip.ip_address
+  value = data.azurerm_public_ip.controllerpublicip.ip_address
 }
 
 output "gateway_public_ip" {
-  value = azurerm_public_ip.gatewaypublicip.ip_address
+  value = data.azurerm_public_ip.gatewaypublicip.ip_address
 }
