@@ -46,7 +46,7 @@ resource "azurerm_resource_group" "resourcegroup" {
 
 # Create a virtual network within the resource group
 resource "azurerm_virtual_network" "network" {
-    name                = "${var.project_id}-net"
+    name                = "${var.project_id}-vnet"
     address_space       = ["10.1.0.0/16"]
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
@@ -59,7 +59,7 @@ resource "azurerm_virtual_network" "network" {
 
 # Create the subnet
 resource "azurerm_subnet" "subnet" {
-    name                 = "${var.project_id}-subnet"
+    name                 = "${var.project_id}-subnet0"
     resource_group_name  = azurerm_resource_group.resourcegroup.name
     virtual_network_name = azurerm_virtual_network.network.name
     address_prefix       = "10.1.1.0/24"
