@@ -14,6 +14,7 @@ variable "tenant_id" { }
 #variable "worker1" { }
 variable "worker_count" { default = 3 }
 variable "user" { }
+variable "bluedata_image_url" { }
 
 # Azure VM Sizes
 variable "gtw_instance_type" { default = "Standard_D16_v3" }
@@ -248,6 +249,16 @@ resource "azurerm_virtual_machine" "controller-vm" {
     boot_diagnostics {
         enabled     = "true"
         storage_uri = azurerm_storage_account.storageaccount.primary_blob_endpoint
+    }
+
+    provisioner "remote-exec" {
+        inline = [
+            #"ssh-keygen -q -P "" -f ~/.ssh/id_rsa",
+            #"ssh-copy-id ${var.user}@${azurerm.azurerm_virtual_machine.gateway-vm}", # this needs to be repeated for each node (worker) and requires interaction for password entry. Not very useful.
+            #"echo 'erdincka ALL=(ALL)      ALL' >> /etc/sudoers" # is this needed with ssh_keys? If yes, should be executed with sudo
+            "wget ${var.bluedata_image_url}"
+
+        ]
     }
 
     tags = {

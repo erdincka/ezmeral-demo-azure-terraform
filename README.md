@@ -20,3 +20,18 @@ AppId                                 DisplayName                    Name       
 ***REMOVED***  azure-cli-2019-12-10-07-12-40  http://azure-cli-2019-12-10-07-12-40  ***REMOVED***  ***REMOVED***
 
 
+create id_rsa.pub ("ssh-keygen -t rsa") to be copied to the VMs (will be used for ssh connectivity)
+
+Once VMs created, create ssh keys on controller & copy over to other nodes
+"ssh-keygen -t rsa" "ssh_copy_id user@gateway/workerN"
+Update security (disable pass auth)
+Disable firewall ports except GW (https) and controller (ssh)
+
+Disable services?
+
+Setup se_linux?
+
+Copy install image
+
+Setup bluedata controller & workers
+
