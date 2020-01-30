@@ -7,10 +7,10 @@ Set environment variable to the subscription you want to use (following line wor
 SUBSCRIPTION_ID=`az account list --query "[].{sub:id}" -o tsv`
 
 Set subscription to use
-az account set --subscription="${SUBSCRIPTION_ID}"
+[code] az account set --subscription="${SUBSCRIPTION_ID}" [/code]
 
 Create a service principle to be used for this deployment
-az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/${SUBSCRIPTION_ID}"
+[code] az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/${SUBSCRIPTION_ID}" [/code]
 
 The output should be used to fill in provider details in terraform.tfvars
 Save appId, password, sp_name & tenant from response
@@ -20,10 +20,8 @@ AppId                                 DisplayName                    Name       
 ***REMOVED***  azure-cli-2019-12-10-07-12-40  http://azure-cli-2019-12-10-07-12-40  ***REMOVED***  ***REMOVED***
 
 
-create id_rsa.pub ("ssh-keygen -t rsa") to be copied to the VMs (will be used for ssh connectivity)
+TODO:
 
-Once VMs created, create ssh keys on controller & copy over to other nodes
-"ssh-keygen -t rsa" "ssh_copy_id user@gateway/workerN"
 Update security (disable pass auth)
 Disable firewall ports except GW (https) and controller (ssh)
 

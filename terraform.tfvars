@@ -22,14 +22,17 @@ worker_count = 3
 # you may need to change the instance types if the ones
 # listed below are not available in your region
 
+ctr_instance_type  = "Standard_A4m_v2"
 gtw_instance_type  = "Basic_A0" # "Standard_D16_v3"
-ctr_instance_type  = "Basic_A0" # "Standard_D16_v3"
 wkr_instance_type  = "Basic_A0" # "Standard_D16_v3"
 nfs_instance_type  = "Basic_A0" # "Standard_D2_v3"
 ad_instance_type   = "Basic_A0" # "Standard_D2_v3"
 
 # Environment
 ssh_pub_key_path = "~/.ssh/id_rsa.pub"
-temp_password = "UxmD4R68nZnvr3Zr"
-pass_auth_disabled = false
+ssh_prv_key_path = "~/.ssh/id_rsa"
+selinux_disabled = false
+
+#temp_password = "UxmD4R68nZnvr3Zr"
+// pass_auth_disabled = false
 bluedata_image_url = "***REMOVED***"

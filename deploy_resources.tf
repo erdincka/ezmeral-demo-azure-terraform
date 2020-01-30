@@ -15,6 +15,7 @@ variable "tenant_id" { }
 variable "worker_count" { default = 3 }
 variable "user" { }
 variable "bluedata_image_url" { }
+variable "selinux_disabled" { default = false }
 
 # Azure VM Sizes
 variable "gtw_instance_type" { default = "Standard_D16_v3" }
@@ -24,8 +25,9 @@ variable "nfs_instance_type" { default = "Standard_D2_v3" }
 variable "ad_instance_type" { default = "Standard_D2_v3" }
 
 # environment
-variable "ssh_pub_key_path" { }
-variable "temp_password" { }
+variable "ssh_pub_key_path" { default = "~/.ssh/id_rsa.pub" }
+variable "ssh_prv_key_path" { default = "~/.ssh/id_rsa" }
+// variable "temp_password" { }
 variable "pass_auth_disabled" { default = true }
 
 provider "azurerm" {
@@ -222,7 +224,26 @@ resource "azurerm_virtual_machine" "controller-vm" {
         name              = "controller-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
+        disk_size_gb      = "512" # "400"
         managed_disk_type = "Standard_LRS"
+    }
+
+    storage_data_disk {
+        name              = "controller-data-disk0"
+        caching           = "ReadWrite"
+        create_option     = "Empty"
+        managed_disk_type = "Standard_LRS"
+        disk_size_gb      = "512"
+        lun               = 1
+    }
+
+    storage_data_disk {
+        name              = "controller-data-disk1"
+        caching           = "ReadWrite"
+        create_option     = "Empty"
+        managed_disk_type = "Standard_LRS"
+        disk_size_gb      = "512"
+        lun               = 2
     }
 
     storage_image_reference {
@@ -235,30 +256,28 @@ resource "azurerm_virtual_machine" "controller-vm" {
     os_profile {
         computer_name  = "controller"
         admin_username = var.user
-        admin_password = var.temp_password
+        // admin_password = var.temp_password
     }
 
     os_profile_linux_config {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = data.local_file.ssh_pub_key.content
+            key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
         }
     }
+
+    // provisioner "remote-exec" {
+    //     inline = [
+    //         "wget ${bluedata_image_url}",
+    //         "sudo yum update -y",
+    //         // "nohup sudo reboot </dev/null &"
+    //     ]
+    // }
 
     boot_diagnostics {
         enabled     = "true"
         storage_uri = azurerm_storage_account.storageaccount.primary_blob_endpoint
-    }
-
-    provisioner "remote-exec" {
-        inline = [
-            #"ssh-keygen -q -P "" -f ~/.ssh/id_rsa",
-            #"ssh-copy-id ${var.user}@${azurerm.azurerm_virtual_machine.gateway-vm}", # this needs to be repeated for each node (worker) and requires interaction for password entry. Not very useful.
-            #"echo 'erdincka ALL=(ALL)      ALL' >> /etc/sudoers" # is this needed with ssh_keys? If yes, should be executed with sudo
-            "wget ${var.bluedata_image_url}"
-
-        ]
     }
 
     tags = {
@@ -291,14 +310,14 @@ resource "azurerm_virtual_machine" "gateway-vm" {
     os_profile {
         computer_name  = "gateway"
         admin_username = var.user
-        admin_password = var.temp_password
+        // admin_password = var.temp_password
     }
 
     os_profile_linux_config {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = data.local_file.ssh_pub_key.content
+            key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
         }
     }
 
@@ -326,8 +345,28 @@ resource "azurerm_virtual_machine" "workers" {
         name              = "worker${count.index + 1}-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
+        disk_size_gb      = "400"
         managed_disk_type = "Standard_LRS"
     }
+
+    // storage_data_disk {
+    //     name              = "worker${count.index + 1}-data-disk0"
+    //     caching           = "ReadWrite"
+    //     create_option     = "Empty"
+    //     managed_disk_type = "Standard_LRS"
+    //     disk_size_gb      = "1024"
+    //     lun               = 1
+    // }
+
+    // storage_data_disk {
+    //     name              = "worker${count.index + 1}-data-disk1"
+    //     caching           = "ReadWrite"
+    //     create_option     = "Empty"
+    //     managed_disk_type = "Standard_LRS"
+    //     disk_size_gb      = "1024"
+    //     lun               = 2
+    // }
+
 
     storage_image_reference {
         publisher = "OpenLogic"
@@ -339,14 +378,14 @@ resource "azurerm_virtual_machine" "workers" {
     os_profile {
         computer_name  = "worker${count.index + 1}"
         admin_username = var.user
-        admin_password = var.temp_password
+        // admin_password = var.temp_password
     }
 
     os_profile_linux_config {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = data.local_file.ssh_pub_key.content
+            key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
         }
     }
 
@@ -375,6 +414,17 @@ output "controller_public_ip" {
   value = data.azurerm_public_ip.ctr_ip.ip_address
 }
 
+output "controller_private_ip" {
+    value = azurerm_network_interface.controllernic.private_ip_address
+}
+
+output "workers_private_ip" {
+    value = azurerm_network_interface.workernics.*.private_ip_address
+}
+
+output "controller_ssh_command" {
+  value = "ssh -o StrictHostKeyChecking=no -i ${var.ssh_prv_key_path} ${var.user}@${data.azurerm_public_ip.ctr_ip.ip_address}"
+}
 
 data "azurerm_public_ip" "gw_ip" {
   name                = azurerm_public_ip.gatewaypublicip.name
@@ -383,4 +433,36 @@ data "azurerm_public_ip" "gw_ip" {
 
 output "gateway_public_ip" {
   value = data.azurerm_public_ip.gw_ip.ip_address
+}
+
+output "gateway_private_ip" {
+    value = azurerm_network_interface.gatewaynic.private_ip_address
+}
+
+// output "gateway_private_dns" {
+//     value = azurerm_network_interface.gatewaynic.internal_dns_name_label
+// }
+
+// output "gateway_public_dns" {
+//     value = azurerm_virtual_machine.gateway-vm.public_ip_dns_name
+// }
+
+output "gateway_ssh_command" {
+  value = "ssh -o StrictHostKeyChecking=no -i ${var.ssh_prv_key_path} ${var.user}@${data.azurerm_public_ip.gw_ip.ip_address}"
+}
+
+output "selinux_disabled" {
+  value = "${var.selinux_disabled}"
+}
+
+output "ssh_pub_key_path" {
+  value = "${var.ssh_pub_key_path}"
+}
+
+output "ssh_prv_key_path" {
+  value = "${var.ssh_prv_key_path}"
+}
+
+output "bluedata_image_url" {
+  value = "${var.bluedata_image_url}"
 }

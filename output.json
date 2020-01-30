@@ -1,0 +1,68 @@
+{
+  "bluedata_image_url": {
+    "sensitive": false,
+    "type": "string",
+    "value": "***REMOVED***"
+  },
+  "controller_private_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "10.1.1.7"
+  },
+  "controller_public_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "52.177.188.58"
+  },
+  "controller_ssh_command": {
+    "sensitive": false,
+    "type": "string",
+    "value": "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa erdincka@52.177.188.58"
+  },
+  "gateway_private_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "10.1.1.6"
+  },
+  "gateway_public_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "52.177.187.132"
+  },
+  "gateway_ssh_command": {
+    "sensitive": false,
+    "type": "string",
+    "value": "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa erdincka@52.177.187.132"
+  },
+  "selinux_disabled": {
+    "sensitive": false,
+    "type": "bool",
+    "value": false
+  },
+  "ssh_prv_key_path": {
+    "sensitive": false,
+    "type": "string",
+    "value": "~/.ssh/id_rsa"
+  },
+  "ssh_pub_key_path": {
+    "sensitive": false,
+    "type": "string",
+    "value": "~/.ssh/id_rsa.pub"
+  },
+  "workers_private_ip": {
+    "sensitive": false,
+    "type": [
+      "tuple",
+      [
+        "string",
+        "string",
+        "string"
+      ]
+    ],
+    "value": [
+      "10.1.1.8",
+      "10.1.1.5",
+      "10.1.1.4"
+    ]
+  }
+}
