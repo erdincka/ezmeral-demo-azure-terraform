@@ -2,6 +2,8 @@
 
 set -e # abort on error
 set -u # abort on undefined variable
+# set -x # enable debug
+# trap read debug
 
 USER="erdincka" # use the same local username, as it relates to $HOME for user running the scripts
 
@@ -70,17 +72,29 @@ echo WRKR_PRV_IPS=${WRKR_PRV_IPS[@]}
 # Test SSH connectivity to VMs from local machine
 ###############################################################################
 
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} 'echo CONTROLLER: $(hostname)'
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_PUB_IP} 'echo GATEWAY: $(hostname)'
+# Azure creates VM OS disk 30GB by default, need to resize
+ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
+   echo CONTROLLER: $(hostname)
+   sudo fdisk /dev/sda
+   d
+   2
+   n
+   p
+   2
 
-# Workers don't have public IP, so checking via controller
+
+   w
+   q
+ENDSSH
+ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "nohup sudo reboot </dev/null &" || true
+
+echo 'Waiting for Controller ssh session '
+while ! nc -w5 -z ${CTRL_PUB_IP} 22; do printf "." -n ; done;
+echo 'Controller has rebooted'
 
 ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
-for WRKR in ${WRKR_PRV_IPS}; do 
-   echo CONTROLLER: Connecting to WORKER ${WRKR}...
-   ssh -o ConnectTimeout=3 -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -T ${USER}@${WRKR} "echo Connected!"
-done
-
+ sudo xfs_growfs /dev/sda2
+ sudo hostnamectl set-hostname controller.bd-demo.local
 ENDSSH
 
 ###############################################################################
@@ -100,11 +114,14 @@ fi
 cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 ENDSSH
 
+# I need this to connect to workers temporarily
+scp -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} ${HOME}/.ssh/id_rsa ${USER}@${CTRL_PUB_IP}:/home/${USER}/.ssh/id_rsa.global
+
 #
 # Controller -> Gateway
 #
 
-# We have password SSH access from our local machines to EC2, so we can utiise this to copy the Controller SSH key to the Gateway
+# We have password SSH access from our local machines, so we can utiise this to copy the Controller SSH key to the Gateway
 ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "cat /home/${USER}/.ssh/id_rsa.pub" | \
   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_PUB_IP} "cat >> /home/${USER}/.ssh/authorized_keys" 
 
@@ -119,12 +136,10 @@ ENDSSH
 #
 
 # We don't have password SSH access from our local machines to all VMs, so we should copy the Controller SSH key to each Worker locally
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
 for WRKR in ${WRKR_PRV_IPS[@]}; do 
-    cat /home/${USER}/.ssh/id_rsa.pub | \
-        ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${WRKR} "cat >> /home/${USER}/.ssh/authorized_keys"
+   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "cat /home/${USER}/.ssh/id_rsa.pub | \
+      ssh -o StrictHostKeyChecking=no -i /home/${USER}/.ssh/id_rsa.global -T ${USER}@${WRKR} \"cat >> /home/${USER}/.ssh/authorized_keys\" " 
 done
-ENDSSH
 
 # test passwordless SSH connection from Controller to Workers
 for WRKR in ${WRKR_PRV_IPS[@]}; do 
@@ -133,6 +148,9 @@ for WRKR in ${WRKR_PRV_IPS[@]}; do
         ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa -T ${USER}@${WRKR} "echo Connected!"
 ENDSSH
 done
+
+# If all keys are copied successfully for paswordless SSH, then safe to delete private key
+ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "rm /home/${USER}/.ssh/id_rsa.global"
 
 ###############################################################################
 # Install RPMS
@@ -152,6 +170,7 @@ ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_P
 # if the reboot causes ssh to terminate with an error, ignore it
 ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_PUB_IP} "nohup sudo reboot </dev/null &" || true
 
+echo 'Updated gateway...'
 
 #
 # Controller
@@ -168,48 +187,53 @@ ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_P
 # if the reboot causes ssh to terminate with an error, ignore it
 ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "nohup sudo reboot </dev/null &" || true
 
+echo 'Updated controller...'
+
 #
 # Workers
 #
+echo 'Waiting for Controller ssh session '
+while ! nc -w5 -z ${CTRL_PUB_IP} 22; do printf "." -n ; done;
+echo 'Controller has rebooted'
 
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
-for WRKR in ${WRKR_PUB_IPS[@]}; do 
+for WRKR in ${WRKR_PRV_IPS[@]}; do 
+   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
    if [[ "$SELINUX_DISABLED" == "True" ]];
    then
       echo "Disabling SELINUX on the worker host $WRKR"
-      ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${WRKR} "sudo sed -i --follow-symlinks 's/^SELINUX=.*/SELINUX=disabled/g' /etc/sysconfig/selinux"
+      ssh ${USER}@${WRKR} "sudo sed -i --follow-symlinks 's/^SELINUX=.*/SELINUX=disabled/g' /etc/sysconfig/selinux"
    fi
 
-   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${WRKR} "sudo yum update -y"
+   ssh ${USER}@${WRKR} "sudo yum update -y"
    # if the reboot causes ssh to terminate with an error, ignore it
-   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${WRKR} "nohup sudo reboot </dev/null &" || true
-done
+   ssh ${USER}@${WRKR} "nohup sudo reboot </dev/null &" || true
 ENDSSH
+echo "Updated worker ${WRKR}..."
+
+done
 
 #
 # Wait for Gateway, Controller and Workers to come online after reboot
 #
 
-echo 'Waiting for Gateway ssh session '
-while ! nc -w5 -z ${GATW_PUB_IP} 22; do printf "." -n ; done;
-echo 'Gateway has rebooted'
+# echo 'Waiting for Gateway ssh session '
+# while ! nc -w5 -z ${GATW_PUB_IP} 22; do printf "." -n ; done;
+# echo 'Gateway has rebooted'
 
-echo 'Waiting for Controller ssh session '
-while ! nc -w5 -z ${CTRL_PUB_IP} 22; do printf "." -n ; done;
-echo 'Controller has rebooted'
-
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
-for WRKR in ${WRKR_PRV_IPS[@]}; do 
-    echo "Waiting for Worker ${WRKR} ssh session"
-    while ! nc -w5 -z ${WRKR} 22; do printf "." -n ; done;
-    echo 'Worker has rebooted'
-done
-ENDSSH
+# for WRKR in ${WRKR_PRV_IPS[@]}; do 
+#    ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
+#     echo "Waiting for Worker ${WRKR} ssh session"
+#     while ! nc -w5 -z ${WRKR} 22; do printf "." -n ; done;
+#     echo 'Worker has rebooted'
+# ENDSSH
+# done
 
 
 ###############################################################################
 # Install Controller
 ###############################################################################
+
+echo "Starting image download and installation..."
 
 ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
    curl -s -o ${EPIC_FILENAME} "${EPIC_DL_URL}"

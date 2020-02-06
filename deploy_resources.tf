@@ -84,7 +84,7 @@ resource "azurerm_network_security_group" "nsg" {
         access                     = "Allow"
         protocol                   = "Tcp"
         source_port_range          = "*"
-        destination_port_range     = "22"
+        destination_port_range     = "22, 80"
         source_address_prefix      = "*"
         destination_address_prefix = "10.1.1.0/24"
     }
@@ -224,7 +224,7 @@ resource "azurerm_virtual_machine" "controller-vm" {
         name              = "controller-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
-        disk_size_gb      = "512" # "400"
+        disk_size_gb      = "400"
         managed_disk_type = "Standard_LRS"
     }
 
@@ -266,14 +266,6 @@ resource "azurerm_virtual_machine" "controller-vm" {
             key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
         }
     }
-
-    // provisioner "remote-exec" {
-    //     inline = [
-    //         "wget ${bluedata_image_url}",
-    //         "sudo yum update -y",
-    //         // "nohup sudo reboot </dev/null &"
-    //     ]
-    // }
 
     boot_diagnostics {
         enabled     = "true"
