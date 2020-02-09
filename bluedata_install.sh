@@ -2,10 +2,9 @@
 
 set -e # abort on error
 set -u # abort on undefined variable
-# set -x # enable debug
-# trap read debug
 
-USER="erdincka" # use the same local username, as it relates to $HOME for user running the scripts
+USER=$(whoami) # use the same local username, as it relates to $HOME for user running the scripts
+# TODO: Get username from terraform output to match configured user
 
 ###############################################################################
 # Set variables from terraform output
@@ -43,59 +42,37 @@ echo CTRL_PUB_IP=$CTRL_PUB_IP
 
 GATW_PRV_IP=$(cat output.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print (obj["gateway_private_ip"]["value"])') 
 GATW_PUB_IP=$(cat output.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print (obj["gateway_public_ip"]["value"])') 
-# GATW_PRV_DNS=$(cat output.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print (obj["gateway_private_dns"]["value"])') 
-# GATW_PUB_DNS=$(cat output.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print (obj["gateway_public_dns"]["value"])') 
 
 echo GATW_PRV_IP=$GATW_PRV_IP
 echo GATW_PUB_IP=$GATW_PUB_IP
-# echo GATW_PRV_DNS=$GATW_PRV_DNS
-# echo GATW_PUB_DNS=$GATW_PUB_DNS
 
 [ "$GATW_PRV_IP" ] || ( echo "ERROR: GATW_PRV_IP is empty" && exit 1 )
 [ "$GATW_PUB_IP" ] || ( echo "ERROR: GATW_PUB_IP is empty" && exit 1 )
-# [ "$GATW_PRV_DNS" ] || ( echo "ERROR: GATW_PRV_DNS is empty" && exit 1 )
-# [ "$GATW_PUB_DNS" ] || ( echo "ERROR: GATW_PUB_DNS is empty" && exit 1 )
 
 WRKR_PRV_IPS=$(cat output.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print (*obj["workers_private_ip"]["value"], sep=" ")') 
-# WRKR_PUB_IPS=$(cat output.json | python3 -c 'import json,sys;obj=json.load(sys.stdin);print (*obj["workers_public_ip"]["value"][0], sep=" ")') 
 
 [ "$WRKR_PRV_IPS" ] || ( echo "ERROR: WRKR_PRV_IPS is empty" && exit 1 )
-# [ "$WRKR_PUB_IPS" ] || ( echo "ERROR: WRKR_PUB_IPS is empty" && exit 1 )
 
 read -r -a WRKR_PRV_IPS <<< "$WRKR_PRV_IPS"
-# read -r -a WRKR_PUB_IPS <<< "$WRKR_PUB_IPS"
 
 echo WRKR_PRV_IPS=${WRKR_PRV_IPS[@]}
-# echo WRKR_PUB_IPS=${WRKR_PUB_IPS[@]}
 
 ###############################################################################
 # Test SSH connectivity to VMs from local machine
 ###############################################################################
 
 # Azure creates VM OS disk 30GB by default, need to resize
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
-   echo CONTROLLER: $(hostname)
-   sudo fdisk /dev/sda
-   d
-   2
-   n
-   p
-   2
+declare -a SERVERS=(${CTRL_PUB_IP} ${GATW_PUB_IP})
 
+for SRV in ${SERVERS[@]}; do
+   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${SRV} -n 'bash -s' < ./server-prepare-fdisk.sh
 
-   w
-   q
-ENDSSH
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "nohup sudo reboot </dev/null &" || true
+   echo "Waiting for ${SRV} ssh session "
+   while ! nc -w5 -z ${SRV} 22; do printf "." -n ; done;
+   echo "${SRV}: now checking updates"
 
-echo 'Waiting for Controller ssh session '
-while ! nc -w5 -z ${CTRL_PUB_IP} 22; do printf "." -n ; done;
-echo 'Controller has rebooted'
-
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
- sudo xfs_growfs /dev/sda2
- sudo hostnamectl set-hostname controller.bd-demo.local
-ENDSSH
+   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${SRV} -n 'bash -s' < ./server-prepare-yum.sh
+done
 
 ###############################################################################
 # Setup SSH keys for passwordless SSH
@@ -152,81 +129,31 @@ done
 # If all keys are copied successfully for paswordless SSH, then safe to delete private key
 ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "rm /home/${USER}/.ssh/id_rsa.global"
 
-###############################################################################
-# Install RPMS
-###############################################################################
-
-#
-# Gateway
-#
-
-if [[ "$SELINUX_DISABLED" == "True" ]];
-then
-   echo 'Disabling SELINUX on the Gateway host'
-   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_PUB_IP} "sudo sed -i --follow-symlinks 's/^SELINUX=.*/SELINUX=disabled/g' /etc/sysconfig/selinux"
-fi
-
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_PUB_IP} "sudo yum update -y"
-# if the reboot causes ssh to terminate with an error, ignore it
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${GATW_PUB_IP} "nohup sudo reboot </dev/null &" || true
-
-echo 'Updated gateway...'
-
-#
-# Controller
-#
-
-
-if [[ "$SELINUX_DISABLED" == "True" ]];
-then
-   echo 'Disabling SELINUX on the Controller host'
-   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "sudo sed -i --follow-symlinks 's/^SELINUX=.*/SELINUX=disabled/g' /etc/sysconfig/selinux"
-fi
-
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "sudo yum update -y"
-# if the reboot causes ssh to terminate with an error, ignore it
-ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} "nohup sudo reboot </dev/null &" || true
-
-echo 'Updated controller...'
 
 #
 # Workers
 #
 echo 'Waiting for Controller ssh session '
 while ! nc -w5 -z ${CTRL_PUB_IP} 22; do printf "." -n ; done;
-echo 'Controller has rebooted'
+echo 'Controller checking worker connections...'
 
 for WRKR in ${WRKR_PRV_IPS[@]}; do 
-   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
-   if [[ "$SELINUX_DISABLED" == "True" ]];
-   then
-      echo "Disabling SELINUX on the worker host $WRKR"
-      ssh ${USER}@${WRKR} "sudo sed -i --follow-symlinks 's/^SELINUX=.*/SELINUX=disabled/g' /etc/sysconfig/selinux"
-   fi
+   ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} -n "bash -s" ssh ${USER}@${WRKR} -n <<EOF
+      sudo xfs_growfs /dev/sda2
+      yum check-update
+      if [ $? == 100 ]; then
+         echo "Installing updates"
+         sudo yum -y update
+         nohup sudo reboot </dev/null &
+         echo "$(hostname) rebooting..."
+      else
+         echo "No updates pending..."
+      fi
+EOF
 
-   ssh ${USER}@${WRKR} "sudo yum update -y"
-   # if the reboot causes ssh to terminate with an error, ignore it
-   ssh ${USER}@${WRKR} "nohup sudo reboot </dev/null &" || true
-ENDSSH
 echo "Updated worker ${WRKR}..."
 
 done
-
-#
-# Wait for Gateway, Controller and Workers to come online after reboot
-#
-
-# echo 'Waiting for Gateway ssh session '
-# while ! nc -w5 -z ${GATW_PUB_IP} 22; do printf "." -n ; done;
-# echo 'Gateway has rebooted'
-
-# for WRKR in ${WRKR_PRV_IPS[@]}; do 
-#    ssh -o StrictHostKeyChecking=no -i ${LOCAL_SSH_PRV_KEY_PATH} -T ${USER}@${CTRL_PUB_IP} << ENDSSH
-#     echo "Waiting for Worker ${WRKR} ssh session"
-#     while ! nc -w5 -z ${WRKR} 22; do printf "." -n ; done;
-#     echo 'Worker has rebooted'
-# ENDSSH
-# done
 
 
 ###############################################################################

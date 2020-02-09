@@ -7,17 +7,17 @@
   "controller_private_ip": {
     "sensitive": false,
     "type": "string",
-    "value": "10.1.1.8"
+    "value": "10.1.1.5"
   },
   "controller_public_ip": {
     "sensitive": false,
     "type": "string",
-    "value": "40.123.32.206"
+    "value": "104.209.219.195"
   },
   "controller_ssh_command": {
     "sensitive": false,
     "type": "string",
-    "value": "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa erdincka@40.123.32.206"
+    "value": "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa erdincka@104.209.219.195"
   },
   "gateway_private_ip": {
     "sensitive": false,
@@ -27,12 +27,12 @@
   "gateway_public_ip": {
     "sensitive": false,
     "type": "string",
-    "value": "104.210.14.86"
+    "value": "40.84.42.150"
   },
   "gateway_ssh_command": {
     "sensitive": false,
     "type": "string",
-    "value": "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa erdincka@104.210.14.86"
+    "value": "ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa erdincka@40.84.42.150"
   },
   "selinux_disabled": {
     "sensitive": false,
@@ -60,9 +60,9 @@
       ]
     ],
     "value": [
-      "10.1.1.5",
-      "10.1.1.4",
-      "10.1.1.6"
+      "10.1.1.8",
+      "10.1.1.6",
+      "10.1.1.4"
     ]
   }
 }

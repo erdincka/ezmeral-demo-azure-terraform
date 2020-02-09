@@ -7,6 +7,7 @@ variable "subscription_id" { }
 variable "client_id" { }
 variable "client_secret" { }
 variable "tenant_id" { }
+variable "cloud_init_file" { }
 
 # BlueData cluster variables
 #variable "controller" { }
@@ -27,7 +28,6 @@ variable "ad_instance_type" { default = "Standard_D2_v3" }
 # environment
 variable "ssh_pub_key_path" { default = "~/.ssh/id_rsa.pub" }
 variable "ssh_prv_key_path" { default = "~/.ssh/id_rsa" }
-// variable "temp_password" { }
 variable "pass_auth_disabled" { default = true }
 
 provider "azurerm" {
@@ -84,7 +84,7 @@ resource "azurerm_network_security_group" "nsg" {
         access                     = "Allow"
         protocol                   = "Tcp"
         source_port_range          = "*"
-        destination_port_range     = "22, 80"
+        destination_port_ranges    = [22, 80]
         source_address_prefix      = "*"
         destination_address_prefix = "10.1.1.0/24"
     }
@@ -120,6 +120,21 @@ resource "azurerm_public_ip" "gatewaypublicip" {
         user = var.user
     }
 }
+
+# Worker Public IPs
+resource "azurerm_public_ip" "workerpublicips" {
+    name                         = "worker${count.index + 1}-pip"
+    count                        = var.worker_count
+    location                     = var.region
+    resource_group_name          = azurerm_resource_group.resourcegroup.name
+    allocation_method            = "Dynamic"
+
+    tags = {
+        environment = var.project_id,
+        user = var.user
+    }
+}
+
 
 # Controller NIC
 resource "azurerm_network_interface" "controllernic" {
@@ -173,6 +188,7 @@ resource "azurerm_network_interface" "workernics" {
         name                          = "worker${count.index + 1}-nic-configuration"
         subnet_id                     = azurerm_subnet.subnet.id
         private_ip_address_allocation = "Dynamic"
+        public_ip_address_id          = azurerm_public_ip.workerpublicips[count.index].id
     }
 
     tags = {
@@ -247,23 +263,23 @@ resource "azurerm_virtual_machine" "controller-vm" {
     }
 
     storage_image_reference {
-        publisher = "OpenLogic"
+        publisher = "OpenLogic 7.7"
         offer     = "CentOS"
-        sku       = "7.5"
+        sku       = "7-CI"
         version   = "latest"
     }
 
     os_profile {
-        computer_name  = "controller"
+        computer_name  = "controller.${var.project_id}.local"
         admin_username = var.user
-        // admin_password = var.temp_password
+        custom_data = file(var.cloud_init_file)
     }
 
     os_profile_linux_config {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
+            key_data = file(var.ssh_pub_key_path)
         }
     }
 
@@ -289,27 +305,47 @@ resource "azurerm_virtual_machine" "gateway-vm" {
         name              = "gateway-os-disk"
         caching           = "ReadWrite"
         create_option     = "FromImage"
+        disk_size_gb      = "400"
         managed_disk_type = "Standard_LRS"
     }
 
+    storage_data_disk {
+        name              = "gateway-data-disk0"
+        caching           = "ReadWrite"
+        create_option     = "Empty"
+        managed_disk_type = "Standard_LRS"
+        disk_size_gb      = "512"
+        lun               = 1
+    }
+
+    storage_data_disk {
+        name              = "gateway-data-disk1"
+        caching           = "ReadWrite"
+        create_option     = "Empty"
+        managed_disk_type = "Standard_LRS"
+        disk_size_gb      = "512"
+        lun               = 2
+    }
+
     storage_image_reference {
-        publisher = "OpenLogic"
+        publisher = "OpenLogic 7.7"
         offer     = "CentOS"
-        sku       = "7.5"
+        sku       = "7-CI"
         version   = "latest"
     }
 
     os_profile {
-        computer_name  = "gateway"
+        // To avoid name collapse with the gateway for vnet
+        computer_name  = "bd-gateway.${var.project_id}.local"
         admin_username = var.user
-        // admin_password = var.temp_password
+        custom_data = file(var.cloud_init_file)
     }
 
     os_profile_linux_config {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
+            key_data = file(var.ssh_pub_key_path)
         }
     }
 
@@ -341,43 +377,42 @@ resource "azurerm_virtual_machine" "workers" {
         managed_disk_type = "Standard_LRS"
     }
 
-    // storage_data_disk {
-    //     name              = "worker${count.index + 1}-data-disk0"
-    //     caching           = "ReadWrite"
-    //     create_option     = "Empty"
-    //     managed_disk_type = "Standard_LRS"
-    //     disk_size_gb      = "1024"
-    //     lun               = 1
-    // }
+    storage_data_disk {
+        name              = "worker${count.index + 1}-data-disk0"
+        caching           = "ReadWrite"
+        create_option     = "Empty"
+        managed_disk_type = "Standard_LRS"
+        disk_size_gb      = "1024"
+        lun               = 1
+    }
 
-    // storage_data_disk {
-    //     name              = "worker${count.index + 1}-data-disk1"
-    //     caching           = "ReadWrite"
-    //     create_option     = "Empty"
-    //     managed_disk_type = "Standard_LRS"
-    //     disk_size_gb      = "1024"
-    //     lun               = 2
-    // }
-
+    storage_data_disk {
+        name              = "worker${count.index + 1}-data-disk1"
+        caching           = "ReadWrite"
+        create_option     = "Empty"
+        managed_disk_type = "Standard_LRS"
+        disk_size_gb      = "1024"
+        lun               = 2
+    }
 
     storage_image_reference {
-        publisher = "OpenLogic"
+        publisher = "OpenLogic 7.7"
         offer     = "CentOS"
-        sku       = "7.5"
+        sku       = "7-CI"
         version   = "latest"
     }
 
     os_profile {
-        computer_name  = "worker${count.index + 1}"
+        computer_name  = "worker${count.index + 1}.${var.project_id}.local"
         admin_username = var.user
-        // admin_password = var.temp_password
+        custom_data = file(var.cloud_init_file)
     }
 
     os_profile_linux_config {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = file(var.ssh_pub_key_path) # data.local_file.ssh_pub_key.content
+            key_data = file(var.ssh_pub_key_path)
         }
     }
 
