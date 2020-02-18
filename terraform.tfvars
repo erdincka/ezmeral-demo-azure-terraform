@@ -31,9 +31,10 @@ ad_instance_type   = "Standard_A4m_v2" # "Standard_D2_v3"
 # Environment
 ssh_pub_key_path = "~/.ssh/id_rsa.pub"
 ssh_prv_key_path = "~/.ssh/id_rsa"
+
 selinux_disabled = false
 cloud_init_file  = "./cloud-init.yaml"
 
-#temp_password = "UxmD4R68nZnvr3Zr"
-// pass_auth_disabled = false
+temp_password = "UxmD4R68nZnvr3Zr"
+pass_auth_disabled = false
 bluedata_image_url = "***REMOVED***"

@@ -29,6 +29,7 @@ variable "ad_instance_type" { default = "Standard_D2_v3" }
 variable "ssh_pub_key_path" { default = "~/.ssh/id_rsa.pub" }
 variable "ssh_prv_key_path" { default = "~/.ssh/id_rsa" }
 variable "pass_auth_disabled" { default = true }
+variable "temp_password" { }
 
 provider "azurerm" {
     version = "=1.38.0"
@@ -221,9 +222,9 @@ resource "azurerm_storage_account" "storageaccount" {
 
 /******************* ssh pub key content ********************/
 
-data "local_file" "ssh_pub_key" {
-    filename = pathexpand(var.ssh_pub_key_path)
-}
+# data "local_file" "ssh_pub_key" {
+#     filename = pathexpand(var.ssh_pub_key_path)
+# }
 
 
 # Create VMs
@@ -263,8 +264,8 @@ resource "azurerm_virtual_machine" "controller-vm" {
     }
 
     storage_image_reference {
-        publisher = "OpenLogic 7.7"
-        offer     = "CentOS"
+        publisher = "OpenLogic"
+        offer     = "CentOS-CI"
         sku       = "7-CI"
         version   = "latest"
     }
@@ -272,6 +273,7 @@ resource "azurerm_virtual_machine" "controller-vm" {
     os_profile {
         computer_name  = "controller.${var.project_id}.local"
         admin_username = var.user
+        admin_password = var.temp_password
         custom_data = file(var.cloud_init_file)
     }
 
@@ -279,7 +281,7 @@ resource "azurerm_virtual_machine" "controller-vm" {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = file(var.ssh_pub_key_path)
+            key_data = file(pathexpand(var.ssh_pub_key_path))
         }
     }
 
@@ -328,8 +330,8 @@ resource "azurerm_virtual_machine" "gateway-vm" {
     }
 
     storage_image_reference {
-        publisher = "OpenLogic 7.7"
-        offer     = "CentOS"
+        publisher = "OpenLogic"
+        offer     = "CentOS-CI"
         sku       = "7-CI"
         version   = "latest"
     }
@@ -338,6 +340,7 @@ resource "azurerm_virtual_machine" "gateway-vm" {
         // To avoid name collapse with the gateway for vnet
         computer_name  = "bd-gateway.${var.project_id}.local"
         admin_username = var.user
+        admin_password = var.temp_password
         custom_data = file(var.cloud_init_file)
     }
 
@@ -345,7 +348,7 @@ resource "azurerm_virtual_machine" "gateway-vm" {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = file(var.ssh_pub_key_path)
+            key_data = file(pathexpand(var.ssh_pub_key_path))
         }
     }
 
@@ -396,8 +399,8 @@ resource "azurerm_virtual_machine" "workers" {
     }
 
     storage_image_reference {
-        publisher = "OpenLogic 7.7"
-        offer     = "CentOS"
+        publisher = "OpenLogic"
+        offer     = "CentOS-CI"
         sku       = "7-CI"
         version   = "latest"
     }
@@ -405,6 +408,7 @@ resource "azurerm_virtual_machine" "workers" {
     os_profile {
         computer_name  = "worker${count.index + 1}.${var.project_id}.local"
         admin_username = var.user
+        admin_password = var.temp_password
         custom_data = file(var.cloud_init_file)
     }
 
@@ -412,7 +416,7 @@ resource "azurerm_virtual_machine" "workers" {
         disable_password_authentication = var.pass_auth_disabled
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
-            key_data = file(var.ssh_pub_key_path)
+            key_data = file(pathexpand(var.ssh_pub_key_path))
         }
     }
 
@@ -450,7 +454,7 @@ output "workers_private_ip" {
 }
 
 output "controller_ssh_command" {
-  value = "ssh -o StrictHostKeyChecking=no -i ${var.ssh_prv_key_path} ${var.user}@${data.azurerm_public_ip.ctr_ip.ip_address}"
+  value = "ssh -o StrictHostKeyChecking=no -i ${pathexpand(var.ssh_pub_key_path)} ${var.user}@${data.azurerm_public_ip.ctr_ip.ip_address}"
 }
 
 data "azurerm_public_ip" "gw_ip" {
@@ -475,7 +479,7 @@ output "gateway_private_ip" {
 // }
 
 output "gateway_ssh_command" {
-  value = "ssh -o StrictHostKeyChecking=no -i ${var.ssh_prv_key_path} ${var.user}@${data.azurerm_public_ip.gw_ip.ip_address}"
+  value = "ssh -o StrictHostKeyChecking=no -i ${pathexpand(var.ssh_pub_key_path)} ${var.user}@${data.azurerm_public_ip.gw_ip.ip_address}"
 }
 
 output "selinux_disabled" {
@@ -483,11 +487,11 @@ output "selinux_disabled" {
 }
 
 output "ssh_pub_key_path" {
-  value = "${var.ssh_pub_key_path}"
+  value = pathexpand(var.ssh_pub_key_path)
 }
 
 output "ssh_prv_key_path" {
-  value = "${var.ssh_prv_key_path}"
+  value = pathexpand(var.ssh_prv_key_path)
 }
 
 output "bluedata_image_url" {

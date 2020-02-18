@@ -8,6 +8,7 @@ users:
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     ssh-authorized-keys: 
       - ssh-rsa ***REMOVED***
+      - ***REMOVED***
 # packages:
 #  - nginx
 #  - nodejs
@@ -40,7 +41,7 @@ users:
 #         console.log('Hello world app listening on port 3000!')
 #       })
 runcmd:
-  - yum -y update
+  # - yum -y update
   - printf "d\n2\nn\np\n2\n\n\nw\n" | sudo fdisk /dev/sda
   
 power_state:
