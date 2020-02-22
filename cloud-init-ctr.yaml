@@ -82,6 +82,7 @@ write_files:
       curl -s -o "/home/bluedata/bluedata-epic-entdoc-minimal.bin" "***REMOVED***"
       chmod +x "/home/bluedata/bluedata-epic-entdoc-minimal.bin"
       pip install --upgrade bdworkbench
+      sudo pip install --quiet bs4
       echo "Starting BlueData installation"
       bash "/home/bluedata/bluedata-epic-entdoc-minimal.bin" --skipeula
       echo "Login to controller webUI and continue with setup"
