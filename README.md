@@ -1,5 +1,11 @@
 ## How to setup BlueData demo environment on Azure with Terraform
 
+This aims to create a minimal demo environment in Microsoft Azure to run BlueData 4.0 installation.
+
+Taken from the work of https://github.com/bluedata-community/bluedata-demo-env-aws-terraform
+
+Run terraform to deploy resources in Azure, and then ssh to controller & run "bluedata_install.sh" script to continue with installation.
+
 Query subscription ID
 az account list --query "[].{name:name, subscriptionId:id, tenantId:tenantId}"
 
@@ -22,14 +28,5 @@ AppId                                 DisplayName                    Name       
 
 TODO:
 
-Update security (disable pass auth)
 Disable firewall ports except GW (https) and controller (ssh)
-
-Disable services?
-
-Setup se_linux?
-
-Copy install image
-
-Setup bluedata controller & workers
 

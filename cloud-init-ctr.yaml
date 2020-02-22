@@ -1,0 +1,94 @@
+#cloud-config for controller
+users:
+  - name: bluedata
+    groups: [sudo, wheel]
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh-authorized-keys: 
+      - ssh-rsa ***REMOVED***
+
+package_upgrade: true
+packages: 
+  - epel-release
+  - firewalld
+repo_update: true
+repo_upgrade: all
+
+disk_setup:
+  ephemeral0:
+    table_type: gpt
+    layout: [[33,82]]
+    overwrite: true
+fs_setup:
+  - device: ephemeral0.1
+    filesystem: swap
+mounts:
+  - ["ephemeral0.1", "none", "swap", "sw", "0", "0"]
+
+write_files:
+  - content: |
+      ***REMOVED***
+      b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+      NhAAAAAwEAAQAAAQEA1EGln/uhzLEplHr1kKd3RaM1zchzRT1E5uk986W4uP0KW41fNv8/
+      ylGgk47MMU0GvoGPe//naozkiq+0XhB+pmakmtVph3UOzBijGj4Jn/kvytvpKdZ+XHkzG/
+      hwBcC+TPpmq9yfQx2+Aj2XXnRIL+tyoefyPphzREjP77bRWEkDgrgNeF99OdKbNLA+xNeo
+      rF6EJ1z8lcrdYUGd0HEh0LiaWkQ2R2XLu70oABw8fwB0Fl6clsYwmRtCs/S4MfCLoOq7QZ
+      7gdD7EFYNazIXqbM694Xk3MgeIb8HyPHwT4PZtsojtkSG9WuLAj6rqFhnjbOlO9aQKc9ex
+      hTP1cF8wRQAAA9jh7hbU4e4W1AAAAAdzc2gtcnNhAAABAQDUQaWf+6HMsSmUevWQp3dFoz
+      XNyHNFPUTm6T3zpbi4/QpbjV82/z/KUaCTjswxTQa+gY97/+dqjOSKr7ReEH6mZqSa1WmH
+      dQ7MGKMaPgmf+S/K2+kp1n5ceTMb+HAFwL5M+mar3J9DHb4CPZdedEgv63Kh5/I+mHNESM
+      /vttFYSQOCuA14X3050ps0sD7E16isXoQnXPyVyt1hQZ3QcSHQuJpaRDZHZcu7vSgAHDx/
+      AHQWXpyWxjCZG0Kz9Lgx8Iug6rtBnuB0PsQVg1rMhepszr3heTcyB4hvwfI8fBPg9m2yiO
+      2RIb1a4sCPquoWGeNs6U71pApz17GFM/VwXzBFAAAAAwEAAQAAAQBtwqzFODiJQyv/Tj5i
+      WVdCOY3/JiMFsRNKXV7d+dq2PpP2l/qe1AvGscNZysQo0m4kYZczRjgDT2x3kziwU9NKdV
+      W1g5qYo53NSQg+78nGYfOm8WV3byXU6A/X7Pbw4qUF5Y7mXKY27NBvFC6Md5FExnp24xzP
+      5cHlk8mDaoSDI/2FovTUXZOz+3cEu2OEz+Cx/DF+9JLaIyRfMpEhxbV66JX/2N9XTsmmdp
+      FmbeXI1EBhuXj89iGpPLkNs8utWe+t8c7efBOb9enGRZwZRsPi2UuMCnEX3SkDnvQLDchG
+      gQmo4hKijFzJ+vCAayRBU1Ek7AUqr2CxnUDK3BtYSq5BAAAAgD3j62TJ+vSixME4X4GUpn
+      kWbE9D3u+B900unRaAp8OMLNo7zQoIU+WGJT1sVv2wFcbe7cq5d6lJmHH2OrGHs78mbI0o
+      zPjUXjZco6wgh78jKQHdkIcSMUaigikevmuSOEaPjXBDFGPwT1/tFCBovGJhWFGqkofMQy
+      xwCd6Y4wo6AAAAgQDrc1fYt3nhBaqyDIAGjXXIeIflxsec5Sh8pvqhNInG84L6nYeEw+4w
+      GYa2nX+HgKFryRV3UAAlQcO0l98sjZuDAFODg/fqXLCu1IzvCpnAUU/V7IPiLCsY1oS7Eb
+      XHFZeID3J0WEhGH+XW/Zn3uFQpOVOXxUbYUPoU1fWAd5Z5DQAAAIEA5sgUNfedKxDDzLFN
+      gvPe3ZMlaMQ336l1SujY5Ppdp2UiCZvXTeB7/z6PhNn7v3kPgu5pE/HUZFSPLfIrQorNld
+      rhTL0Csc4PRV7R7tr+qaJp50RVkyDbS9UvzWnCixDyZGvmwH7Z3RGgBs8PBeHFhwPKVcTm
+      G0VPxyLm2IdPVhkAAAAiZXJkaW5ja2FARXJkaW5jcy1NYWNCb29rLVByby5sb2NhbAE=
+      -----END OPENSSH PRIVATE KEY-----
+    path: /home/bluedata/private.key
+    permissions: '0600'
+
+  - content: |
+      #!/usr/bin/env bash
+      set -e # abort on error
+      set -u # abort on undefined variable
+      sudo chown -R bluedata:bluedata /home/bluedata
+      echo "Generating SSH keys for passwordless login"
+      ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa
+      echo "Adding identities for ssh auth"
+      eval `ssh-agent -s` && ssh-add && ssh-add -t 3600 "/home/bluedata/private.key"
+      echo "Please wait while copying SSH IDs to workers & gateways"
+      ssh-copy-id -o StrictHostKeyChecking=no bluedata@10.1.1.4
+      ssh-copy-id -o StrictHostKeyChecking=no bluedata@10.1.1.5
+      ssh-copy-id -o StrictHostKeyChecking=no bluedata@10.1.1.6
+      ssh-copy-id -o StrictHostKeyChecking=no bluedata@10.1.1.7
+      ssh-copy-id -o StrictHostKeyChecking=no bluedata@10.1.1.8
+      sudo rm "/home/bluedata/private.key"
+      echo "Installing pip and other packages"
+      sudo yum install -y python-pip
+      sudo yum install -y python-setuptools
+      echo "Upgrading python packages"
+      sudo pip install --upgrade pip
+      sudo pip install --upgrade setuptools
+      curl -s -o "/home/bluedata/bluedata-epic-entdoc-minimal.bin" "***REMOVED***"
+      chmod +x "/home/bluedata/bluedata-epic-entdoc-minimal.bin"
+      pip install --upgrade bdworkbench
+      echo "Starting BlueData installation"
+      bash "/home/bluedata/bluedata-epic-entdoc-minimal.bin" --skipeula
+      echo "Login to controller webUI and continue with setup"
+      echo "Use this private key when adding workers & gateway"
+      cat ~/.ssh/id_rsa
+    path: "/home/bluedata/bluedata_install.sh"
+    permissions: '0755'
+
+# power_state:
+#   mode: reboot

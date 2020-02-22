@@ -1,5 +1,7 @@
 # Deployment variables
 variable "project_id" { }
+# used also for creating local admin users in deployed VMs
+variable "user" { }
 
 # AzureRM variables
 variable "region" { }
@@ -7,16 +9,11 @@ variable "subscription_id" { }
 variable "client_id" { }
 variable "client_secret" { }
 variable "tenant_id" { }
-variable "cloud_init_file" { }
+variable "cloud_init_file" { default = "./cloud-init.yaml" }
+variable "ctr_cloud_init_file" { default = "./cloud-init-ctr.yaml" }
 
 # BlueData cluster variables
-#variable "controller" { }
-#variable "gateway" { }
-#variable "worker1" { }
 variable "worker_count" { default = 3 }
-variable "user" { }
-variable "bluedata_image_url" { }
-variable "selinux_disabled" { default = false }
 
 # Azure VM Sizes
 variable "gtw_instance_type" { default = "Standard_D16_v3" }
@@ -27,12 +24,9 @@ variable "ad_instance_type" { default = "Standard_D2_v3" }
 
 # environment
 variable "ssh_pub_key_path" { default = "~/.ssh/id_rsa.pub" }
-variable "ssh_prv_key_path" { default = "~/.ssh/id_rsa" }
-variable "pass_auth_disabled" { default = true }
-variable "temp_password" { }
 
 provider "azurerm" {
-    version = "=1.38.0"
+    version = "=1.44.0"
     subscription_id = var.subscription_id
     client_id = var.client_id
     client_secret = var.client_secret
@@ -49,6 +43,16 @@ resource "azurerm_resource_group" "resourcegroup" {
     }
 }
 
+# Create private DNS zone
+resource "azurerm_private_dns_zone" "dnszone" {
+  name                = "${var.project_id}.bdlocal"
+  resource_group_name = azurerm_resource_group.resourcegroup.name
+  tags = {
+    environment = var.project_id,
+    user = var.user
+  }
+}
+
 # Create a virtual network within the resource group
 resource "azurerm_virtual_network" "network" {
     name                = "${var.project_id}-vnet"
@@ -62,6 +66,14 @@ resource "azurerm_virtual_network" "network" {
     }
 }
 
+# Link Private DNS Zone to Virtual Network
+resource "azurerm_private_dns_zone_virtual_network_link" "dnslink" {
+  name                  = "dnslink"
+  resource_group_name   = azurerm_resource_group.resourcegroup.name
+  private_dns_zone_name = azurerm_private_dns_zone.dnszone.name
+  virtual_network_id    = azurerm_virtual_network.network.id
+}
+
 # Create the subnet
 resource "azurerm_subnet" "subnet" {
     name                 = "${var.project_id}-subnet"
@@ -71,29 +83,41 @@ resource "azurerm_subnet" "subnet" {
 }
 
 # Create a Network Security Group 
-# allow ssh
+# allow ssh & http
 
 resource "azurerm_network_security_group" "nsg" {
     name                = "${var.project_id}-nsg"
     location            = var.region
     resource_group_name = azurerm_resource_group.resourcegroup.name
     
-    security_rule {
-        name                       = "SSH"
-        priority                   = 1001
-        direction                  = "Inbound"
-        access                     = "Allow"
-        protocol                   = "Tcp"
-        source_port_range          = "*"
-        destination_port_ranges    = [22, 80]
-        source_address_prefix      = "*"
-        destination_address_prefix = "10.1.1.0/24"
-    }
+  security_rule {
+    name = "AllowSSH"
+    priority = 100
+    direction = "Inbound"
+    access         = "Allow"
+    protocol = "Tcp"
+    source_port_range       = "*"
+    destination_port_range     = "22"
+    source_address_prefix      = "*"
+    destination_address_prefix = "*"
+  }
 
-    tags = {
-        environment = var.project_id,
-        user = var.user
-    }
+  security_rule {
+    name = "AllowHTTP"
+    priority= 200
+    direction= "Inbound"
+    access = "Allow"
+    protocol = "Tcp"
+    source_port_range       = "*"
+    destination_port_range     = "80"
+    source_address_prefix      = "Internet"
+    destination_address_prefix = "*"
+  }
+
+  tags = {
+      environment = var.project_id,
+      user = var.user
+  }
 }
 
 # Controller Public IP
@@ -115,6 +139,7 @@ resource "azurerm_public_ip" "gatewaypublicip" {
     location                     = var.region
     resource_group_name          = azurerm_resource_group.resourcegroup.name
     allocation_method            = "Dynamic"
+    domain_name_label            = "${var.user}-${var.project_id}"
 
     tags = {
         environment = var.project_id,
@@ -122,19 +147,19 @@ resource "azurerm_public_ip" "gatewaypublicip" {
     }
 }
 
-# Worker Public IPs
-resource "azurerm_public_ip" "workerpublicips" {
-    name                         = "worker${count.index + 1}-pip"
-    count                        = var.worker_count
-    location                     = var.region
-    resource_group_name          = azurerm_resource_group.resourcegroup.name
-    allocation_method            = "Dynamic"
+// # Worker Public IPs
+// resource "azurerm_public_ip" "workerpublicips" {
+//     name                         = "worker${count.index + 1}-pip"
+//     count                        = var.worker_count
+//     location                     = var.region
+//     resource_group_name          = azurerm_resource_group.resourcegroup.name
+//     allocation_method            = "Dynamic"
 
-    tags = {
-        environment = var.project_id,
-        user = var.user
-    }
-}
+//     tags = {
+//         environment = var.project_id,
+//         user = var.user
+//     }
+// }
 
 
 # Controller NIC
@@ -189,7 +214,7 @@ resource "azurerm_network_interface" "workernics" {
         name                          = "worker${count.index + 1}-nic-configuration"
         subnet_id                     = azurerm_subnet.subnet.id
         private_ip_address_allocation = "Dynamic"
-        public_ip_address_id          = azurerm_public_ip.workerpublicips[count.index].id
+        // public_ip_address_id          = azurerm_public_ip.workerpublicips[count.index].id
     }
 
     tags = {
@@ -219,13 +244,6 @@ resource "azurerm_storage_account" "storageaccount" {
         user = var.user
     }
 }
-
-/******************* ssh pub key content ********************/
-
-# data "local_file" "ssh_pub_key" {
-#     filename = pathexpand(var.ssh_pub_key_path)
-# }
-
 
 # Create VMs
 
@@ -273,12 +291,11 @@ resource "azurerm_virtual_machine" "controller-vm" {
     os_profile {
         computer_name  = "controller.${var.project_id}.local"
         admin_username = var.user
-        admin_password = var.temp_password
-        custom_data = file(var.cloud_init_file)
+        custom_data = file(pathexpand(var.ctr_cloud_init_file))
     }
 
     os_profile_linux_config {
-        disable_password_authentication = var.pass_auth_disabled
+        disable_password_authentication = true
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
             key_data = file(pathexpand(var.ssh_pub_key_path))
@@ -296,6 +313,7 @@ resource "azurerm_virtual_machine" "controller-vm" {
     }
 }
 
+# Gateway VM
 resource "azurerm_virtual_machine" "gateway-vm" {
     name                  = "gateway-vm"
     location              = var.region
@@ -340,12 +358,11 @@ resource "azurerm_virtual_machine" "gateway-vm" {
         // To avoid name collapse with the gateway for vnet
         computer_name  = "bd-gateway.${var.project_id}.local"
         admin_username = var.user
-        admin_password = var.temp_password
-        custom_data = file(var.cloud_init_file)
+        custom_data = file(pathexpand(var.cloud_init_file))
     }
 
     os_profile_linux_config {
-        disable_password_authentication = var.pass_auth_disabled
+        disable_password_authentication = true 
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
             key_data = file(pathexpand(var.ssh_pub_key_path))
@@ -408,12 +425,11 @@ resource "azurerm_virtual_machine" "workers" {
     os_profile {
         computer_name  = "worker${count.index + 1}.${var.project_id}.local"
         admin_username = var.user
-        admin_password = var.temp_password
-        custom_data = file(var.cloud_init_file)
+        custom_data = file(pathexpand(var.cloud_init_file))
     }
 
     os_profile_linux_config {
-        disable_password_authentication = var.pass_auth_disabled
+        disable_password_authentication = true
         ssh_keys {
             path     = "/home/${var.user}/.ssh/authorized_keys"
             key_data = file(pathexpand(var.ssh_pub_key_path))
@@ -445,16 +461,8 @@ output "controller_public_ip" {
   value = data.azurerm_public_ip.ctr_ip.ip_address
 }
 
-output "controller_private_ip" {
-    value = azurerm_network_interface.controllernic.private_ip_address
-}
-
-output "workers_private_ip" {
-    value = azurerm_network_interface.workernics.*.private_ip_address
-}
-
 output "controller_ssh_command" {
-  value = "ssh -o StrictHostKeyChecking=no -i ${pathexpand(var.ssh_pub_key_path)} ${var.user}@${data.azurerm_public_ip.ctr_ip.ip_address}"
+  value = "ssh -o StrictHostKeyChecking=no ${var.user}@${data.azurerm_public_ip.ctr_ip.ip_address}"
 }
 
 data "azurerm_public_ip" "gw_ip" {
@@ -466,34 +474,14 @@ output "gateway_public_ip" {
   value = data.azurerm_public_ip.gw_ip.ip_address
 }
 
+output "controller_private_ip" {
+    value = azurerm_network_interface.controllernic.private_ip_address
+}
+
 output "gateway_private_ip" {
     value = azurerm_network_interface.gatewaynic.private_ip_address
 }
 
-// output "gateway_private_dns" {
-//     value = azurerm_network_interface.gatewaynic.internal_dns_name_label
-// }
-
-// output "gateway_public_dns" {
-//     value = azurerm_virtual_machine.gateway-vm.public_ip_dns_name
-// }
-
-output "gateway_ssh_command" {
-  value = "ssh -o StrictHostKeyChecking=no -i ${pathexpand(var.ssh_pub_key_path)} ${var.user}@${data.azurerm_public_ip.gw_ip.ip_address}"
-}
-
-output "selinux_disabled" {
-  value = "${var.selinux_disabled}"
-}
-
-output "ssh_pub_key_path" {
-  value = pathexpand(var.ssh_pub_key_path)
-}
-
-output "ssh_prv_key_path" {
-  value = pathexpand(var.ssh_prv_key_path)
-}
-
-output "bluedata_image_url" {
-  value = "${var.bluedata_image_url}"
+output "worker_private_ips" {
+    value = azurerm_network_interface.workernics.*.private_ip_address
 }
