@@ -26,7 +26,7 @@ variable "ad_instance_type" { default = "Standard_D2_v3" }
 variable "ssh_pub_key_path" { default = "~/.ssh/id_rsa.pub" }
 
 provider "azurerm" {
-    version = "=1.44.0"
+    features {}
     subscription_id = var.subscription_id
     client_id = var.client_id
     client_secret = var.client_secret
@@ -79,7 +79,7 @@ resource "azurerm_subnet" "subnet" {
     name                 = "${var.project_id}-subnet"
     resource_group_name  = azurerm_resource_group.resourcegroup.name
     virtual_network_name = azurerm_virtual_network.network.name
-    address_prefix       = "10.1.1.0/24"
+    address_prefixes       = ["10.1.1.0/24"]
 }
 
 # Create a Network Security Group 
@@ -167,7 +167,6 @@ resource "azurerm_network_interface" "controllernic" {
     name                        = "controller-nic"
     location                    = var.region
     resource_group_name         = azurerm_resource_group.resourcegroup.name
-    network_security_group_id   = azurerm_network_security_group.nsg.id
 
     ip_configuration {
         name                          = "controller-nic-configuration"
@@ -187,7 +186,6 @@ resource "azurerm_network_interface" "gatewaynic" {
     name                        = "gateway-nic"
     location                    = var.region
     resource_group_name         = azurerm_resource_group.resourcegroup.name
-    network_security_group_id   = azurerm_network_security_group.nsg.id
 
     ip_configuration {
         name                          = "gateway-nic-configuration"
@@ -208,7 +206,6 @@ resource "azurerm_network_interface" "workernics" {
     name                        = "worker${count.index + 1}-nic"
     location                    = var.region
     resource_group_name         = azurerm_resource_group.resourcegroup.name
-    network_security_group_id   = azurerm_network_security_group.nsg.id
 
     ip_configuration {
         name                          = "worker${count.index + 1}-nic-configuration"

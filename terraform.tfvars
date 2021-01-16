@@ -1,8 +1,8 @@
-# Azure Subscription and Service Principle for azurerm provider or use ./setup_azure.sh (please refer to README.md)
-subscription_id = "***REMOVED***"
-client_id       = "***REMOVED***"
-client_secret   = "***REMOVED***"
-tenant_id       = "***REMOVED***"
+# Azure Subscription and Service Principle for azurerm provider https://docs.microsoft.com/en-us/azure/developer/terraform/get-started-cloud-shell
+subscription_id = ""
+client_id       = ""
+client_secret   = ""
+tenant_id       = ""
 
 #
 # Select an appropriate region
@@ -12,7 +12,7 @@ region = "eastus2"
 #
 # Set this to something meaningful.  it is used as a tag in Azure
 #
-project_id         = "bd-demo"
+project_id         = "ecp-demo"
 user               = "bluedata"
 
 # you may need to change the instance types if the ones

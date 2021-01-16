@@ -5,7 +5,7 @@ users:
     shell: /bin/bash
     sudo: ['ALL=(ALL) NOPASSWD:ALL']
     ssh-authorized-keys: 
-      - ssh-rsa ***REMOVED***
+      - ssh-rsa PUB_KEY
 
 package_upgrade: true
 packages:

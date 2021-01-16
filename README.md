@@ -1,15 +1,25 @@
-## How to setup BlueData demo environment on Azure with Terraform
+# Setup HPE Ezmeral Container Platform (ECP) demo environment on Azure with Terraform
 
-This aims to create a minimal demo environment in Microsoft Azure to run BlueData 4.0 installation.
+This aims to create a minimal demo environment in Microsoft Azure to run HPE Ezmeral Container Platform 5.x installation.
 
-Taken from the work of https://github.com/bluedata-community/bluedata-demo-env-aws-terraform
+Re-utilizing work of https://github.com/bluedata-community/bluedata-demo-env-aws-terraform
 
-Run terraform to deploy resources in Azure, and then ssh to controller & run "bluedata_install.sh" script to continue with installation.
+## Initial configuration
 
-Query subscription ID
+### Download AzureCLI 
+
+[Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+
+### Configure AzureCLI
+Login to Azure:
+```
+az login
+```
+
+<!-- Query subscription ID
 ```
 az account list --query "[].{name:name, subscriptionId:id, tenantId:tenantId}"
-```
+``` -->
 
 Set environment variable to the subscription you want to use (following line works with a single subscription only)
 ```
@@ -36,8 +46,46 @@ AppId                                 DisplayName                    Name       
 ***REMOVED***  azure-cli-2019-12-10-07-12-40  http://azure-cli-2019-12-10-07-12-40  ***REMOVED***  ***REMOVED***
 
 ```
+### Download terraform
 
-TODO:
+[Terraform](https://www.terraform.io/downloads.html)
 
-Disable firewall ports except GW (https) and controller (ssh)
+### Update terraform.tfvars for following:
+- region: {AZURE_REGION}
+- subscription_id: ${SUBSCRIPTION_ID}
+- client_id: {AppId}
+- client_secret: {Password}
+- tenant_id: {Tenant}
 
+### Update cloud-init-ctr.yaml
+- PUB_KEY (replace with the contents of ~/.ssh/id_rsa.pub)
+- PRV_KEY (replace with the contents of ~/.ssh/id_rsa)
+- EPIC_FILENAME
+- EPIC_DL_URL (full url to download installation file)
+
+## Plan and Deploy using Terraform
+
+```
+terraform init
+```
+
+```
+terraform plan -o plan.tfout
+```
+
+### Deploy
+```
+terraform apply
+```
+
+### Install
+```
+ssh -o StrictHostKeyChecking=no -T <CTRL_IP> "./bluedata_install.sh"
+```
+
+
+# TODO:
+
+[ ] Disable firewall ports except GW (https) and controller (ssh)
+
+[ ] Full functionality with AWS scripts
