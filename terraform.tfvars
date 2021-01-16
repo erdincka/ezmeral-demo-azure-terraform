@@ -14,14 +14,15 @@ region = "eastus2"
 #
 project_id         = "ecp-demo"
 user               = "bluedata"
+ssh_pub_key_path   = ""
+hcpdomain          = "" # leave empty to use default (or configure terraform to create private DNS resolver and link to private network
 
 # you may need to change the instance types if the ones
 # listed below are not available in your region
 
 ctr_instance_type  = "Standard_A4m_v2"
-gtw_instance_type  = "Standard_A4m_v2"
+gtw_instance_type  = "Standard_B1ms"
 wkr_instance_type  = "Standard_A4m_v2"
-nfs_instance_type  = "Standard_A4m_v2"
-ad_instance_type   = "Standard_A4m_v2"
-
-// bluedata_image_url = "***REMOVED***"
+jh_instance_type   = "Standard_B2ms"
+# nfs_instance_type  = "Standard_A4m_v2"
+# ad_instance_type   = "Standard_A4m_v2"
