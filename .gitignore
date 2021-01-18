@@ -33,3 +33,6 @@ terraform.exe
 .vscode
 .DS_Store
 .terraform.lock.hcl
+etc/my.tfvars
+hcp-demo-env-aws-terraform
+generated

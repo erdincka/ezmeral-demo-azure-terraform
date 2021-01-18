@@ -9,7 +9,7 @@ if [[ ! -f initialized ]]; then
     sudo systemctl enable --now xrdp
     gsettings set org.mate.screensaver lock-enabled false
 else
-    echo Jumphost already initialized, skipping...
+    echo RDP host already initialized, skipping...
 fi
 
 if [[ ! -d minica ]]; then
@@ -24,4 +24,4 @@ else
 fi
 
 touch initialized
-echo Finished initializing jumphost
+echo Finished initializing RDP host

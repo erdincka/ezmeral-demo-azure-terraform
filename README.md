@@ -84,15 +84,15 @@ terraform output > terraform.output
 
 ### Update scripts
 
-#### Edit scripts/jumphost_init.sh
+#### Edit scripts/rdp_init.sh
 
-Replace PASSWORD with the *jumphost_password* from terraform.output file.
+Replace PASSWORD with the *rdp_password* from terraform.output file.
 
 **Replace bluedata if you changed user parameter if terraform.tfvars file**
 
-Replace DOMAINS with "internal.cloudapp.net,localhost, *jumphost_public_dns_name*" (replace with value from terraform.output file)
+Replace DOMAINS with "internal.cloudapp.net,localhost, *rdp_public_dns_name*" (replace with value from terraform.output file)
 
-Replace IPS with "*jumphost_public_ip*,*jumphost_private_ip*,*controller_private_ip*,*gateway_private_ip*,*worker_private_ips(comma separated list)*,127.0.0.1" (replace with values from terraform.output file)
+Replace IPS with "*rdp_public_ip*,*rdp_private_ip*,*controller_private_ip*,*gateway_private_ip*,*worker_private_ips(comma separated list)*,127.0.0.1" (replace with values from terraform.output file)
 
 **DOMAINS and IPS should be separated by comma and not space**
 
@@ -106,24 +106,24 @@ Replace all occurances of these placeholders with corresponding values
 
 ### Prepare hosts for Installation
 
-- Copy your (or generated) private key to Jumphost
+- Copy your (or generated) private key to RDP host
 
 ```
-scp ~/.ssh/id_rsa.pub bluedata@<jumphost_public_ip>:~/private.key
+scp ~/.ssh/id_rsa.pub bluedata@<rdp_public_ip>:~/private.key
 ```
 
-- Copy scripts/jumphost_init.sh to Jumphost
+- Copy scripts/rdp_init.sh to RDP host
 ```
-scp scripts/jumphost_init.sh bluedata@>jumphost_public_ip>:~/
-```
-
-- Execute init script at Jumphost (and set file permissions)
-
-```
-ssh -T bluedata@<jumphost_public_ip> "chmod 600 ~/private.key; chmod +x ./*.sh; ./jumphost_init.sh"
+scp scripts/rdp_init.sh bluedata@>rdp_public_ip>:~/
 ```
 
-- Copy and run host_init.sh on all other hosts (from Jumphost)
+- Execute init script at RDP host (and set file permissions)
+
+```
+ssh -T bluedata@<rdp_public_ip> "chmod 600 ~/private.key; chmod +x ./*.sh; ./rdp_init.sh"
+```
+
+- Copy and run host_init.sh on all other hosts (from RDP host)
 
 Replace IPs with values from terraform.output (use private IPs)
 ```
@@ -135,7 +135,7 @@ do;
 done;
 ```
 
-- Init controller (from Jumphost)
+- Init controller (from RDP host)
 
 Copy certificate files and run install script
 
