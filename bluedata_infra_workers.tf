@@ -1,13 +1,24 @@
+# Workers Public IP
+resource "azurerm_public_ip" "workerspip" {
+  count                   = var.worker_count
+  name                    = "worker${count.index + 1}-pip"
+  location                = azurerm_resource_group.resourcegroup.location
+  resource_group_name     = azurerm_resource_group.resourcegroup.name
+  allocation_method       = "Dynamic"
+  domain_name_label       = "worker${count.index + 1}-${var.project_id}"
+}
+
 # Worker NICs
 resource "azurerm_network_interface" "workernics" {
-    count                       = var.worker_count
-    name                        = "worker${count.index + 1}-nic"
-    location                    = azurerm_resource_group.resourcegroup.location
-    resource_group_name         = azurerm_resource_group.resourcegroup.name
+    count                = var.worker_count
+    name                 = "worker${count.index + 1}-nic"
+    location             = azurerm_resource_group.resourcegroup.location
+    resource_group_name  = azurerm_resource_group.resourcegroup.name
     ip_configuration {
         name                          = "worker${count.index + 1}-nic-ip"
         subnet_id                     = azurerm_subnet.internal.id
         private_ip_address_allocation = "Dynamic"
+        public_ip_address_id          = azurerm_public_ip.workerspip[count.index].id
     }
 }
 
@@ -28,13 +39,13 @@ resource "azurerm_linux_virtual_machine" "workers" {
     os_disk {
         name              = "worker${count.index + 1}-disk0"
         caching           = "ReadWrite"
-        disk_size_gb      = "512"
+        disk_size_gb      = 400
         storage_account_type = "Standard_LRS"
     }
     source_image_reference {
         publisher = "OpenLogic"
         offer     = "CentOS"
-        sku       = "7-CI"
+        sku       = "7_8"
         version   = "latest"
     }
     boot_diagnostics {
@@ -62,7 +73,7 @@ resource "azurerm_managed_disk" "wrkdatadisk" {
   name                 = each.key
   location             = azurerm_resource_group.resourcegroup.location
   create_option        = "Empty"
-  disk_size_gb         = 512
+  disk_size_gb         = 1024
   resource_group_name  = azurerm_resource_group.resourcegroup.name
   storage_account_type = "Standard_LRS"
 }

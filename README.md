@@ -1,26 +1,24 @@
-# Setup HPE Ezmeral Container Platform (ECP) demo environment on Azure with Terraform
+# ECP Azure-Terraform
 
-This aims to create a minimal demo environment in Microsoft Azure to run HPE Ezmeral Container Platform 5.x installation.
+## Overview
 
-Re-utilizing work of https://github.com/bluedata-community/bluedata-demo-env-aws-terraform
+### Setup HPE Ezmeral Container Platform (ECP) demo environment on Azure with Terraform
 
-## Initialize
+This project makes it easy to setup HPE Container Platform demo/trial environments on Azure, using [AWS demo scripts](https://github.com/bluedata-community/bluedata-demo-env-aws-terraform) to enable same learning/trial functionality.
 
-### Download AzureCLI 
+### Pre-requisities
 
-[Azure CLI](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
+- Azure CLI [download](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli)
 
-### Configure AzureCLI
-Login to Azure:
+- Terraform [download](https://www.terraform.io/downloads.html)
+
+### Initialize with your Azure credentials
+
+- Login to Azure
+
 ```
 az login
 ```
-
-<!-- Query subscription ID
-```
-az account list --query "[].{name:name, subscriptionId:id, tenantId:tenantId}"
-``` -->
-
 Set environment variable to the subscription you want to use (following line works with a single subscription only)
 ```
 SUBSCRIPTION_ID=`az account list --query "[].{sub:id}" -o tsv`
@@ -46,112 +44,44 @@ AppId                                 DisplayName                    Name       
 00000000-0000-0000-0000-000000000000  azure-cli-2019-12-10-07-12-40  http://azure-cli-2019-12-10-07-12-40  00000000-0000-0000-0000-000000000000  00000000-0000-0000-0000-000000000000
 
 ```
-### Download terraform
 
-[Terraform](https://www.terraform.io/downloads.html)
+### Update variables for your environment
 
-### Update terraform.tfvars for following:
+#### Update ./etc/bluedata_infra.tfvars
+
 - region: {AZURE_REGION}
 - subscription_id: ${SUBSCRIPTION_ID}
 - client_id: {AppId}
 - client_secret: {Password}
 - tenant_id: {Tenant}
+- epic_dl_url: 
+- (OPTIONAL)
+  - Change project_id (which will be used as resource_group_name and prefix for created resources)
+  - Change options (create AD server, NFS server, External MapR cluster (not implemented yet), add GPU nodes (not implemented yet) etc)
+  - Change Azure VM sizes to fit in your region availability
 
-### Update cloud-init.yaml
-- PUB_KEY (replace with the contents of ~/.ssh/id_rsa.pub)
-
-## Plan and Deploy using Terraform
-
+## Deploy
 ```
-terraform init
+./bin/azure_create_new.sh
 ```
+This step might take somewhere between 45 minutes to 2 hours, please monitor the script output, and follow up guides in upstream [repo](https://github.com/hpe-container-platform-community/hcp-demo-env-aws-terraform#further-documentation).
 
-```
-terraform plan -o plan.tfout
-```
+## Customizing resources and scenarios
 
-### Deploy
-```
-terraform apply -auto-approve "plan.tfout"
-```
+You can edit ./etc/bluedata_infra.tfvars to choose some options, such as enabling RDP server, AD server, NFS server etc.
 
-### Save results
-```
-terraform output > terraform.output
-```
+If you wish to re-configure, make changes and run ```terraform apply``` to reflect these changes in the resources.
 
-## Prepare for Installation
+Alternatively, you can switch to "./hcp-demo-env-aws-terraform" folder and run scripts in ./bin directory (please run scripts on this upstream repo top level directory, ie, within ./hcp-demo-env-aws-terraform).
 
-### Update scripts
+For example to install all available catalog images, you can run:
+./bin/experimental/epic_catalog_image_install_all.sh
 
-#### Edit scripts/rdp_init.sh
 
-Replace PASSWORD with the *rdp_password* from terraform.output file.
+## TODO
+- [ ] Enable GPU nodes
+- [ ] Enable MapR cluster creation
+- [ ] Enable AKS creation
 
-**Replace bluedata if you changed user parameter if terraform.tfvars file**
+Please send comments/issues/suggestions through github (as we are not monitoring other places, such as Stackoverflow etc).
 
-Replace DOMAINS with "internal.cloudapp.net,localhost, *rdp_public_dns_name*" (replace with value from terraform.output file)
-
-Replace IPS with "*rdp_public_ip*,*rdp_private_ip*,*controller_private_ip*,*gateway_private_ip*,*worker_private_ips(comma separated list)*,127.0.0.1" (replace with values from terraform.output file)
-
-**DOMAINS and IPS should be separated by comma and not space**
-
-#### Edit scripts/bluedata_install.sh
-
-Replace all occurances of these placeholders with corresponding values
-
-- EPIC_FILENAME
-- EPIC_DL_URL (full url to download installation file)
-- CONTROLLER_IP (from terraform.output file **controller_private_ip**)
-
-### Prepare hosts for Installation
-
-- Copy your (or generated) private key to RDP host
-
-```
-scp ~/.ssh/id_rsa.pub bluedata@<rdp_public_ip>:~/private.key
-```
-
-- Copy scripts/rdp_init.sh to RDP host
-```
-scp scripts/rdp_init.sh bluedata@>rdp_public_ip>:~/
-```
-
-- Execute init script at RDP host (and set file permissions)
-
-```
-ssh -T bluedata@<rdp_public_ip> "chmod 600 ~/private.key; chmod +x ./*.sh; ./rdp_init.sh"
-```
-
-- Copy and run host_init.sh on all other hosts (from RDP host)
-
-Replace IPs with values from terraform.output (use private IPs)
-```
-for host in [<controller_private_ip>, <gateway_private_ip>, *<worker_private_ips>]; 
-do; 
-  scp -i ./private.key private.key ${host}:~/private.key
-  scp -i ./private.key host_init.sh ${host}:~/
-  ssh -i ./private.key "chmod +x ~/*.sh; chmod 600 ~/private.key; ./host_init.sh"
-done;
-```
-
-- Init controller (from RDP host)
-
-Copy certificate files and run install script
-
-```
-scp internal.cloudapp.net/*.pem <controller_private_ip>:~/
-ssh <controller_private_ip> <<EOF
-  mv cert.pem cacert.pem
-  mv key.pem cakey.pem
-  chmod 600 *.pem
-  sudo ./bluedata_install.sh
-EOF
-
-```
-
-# TODO:
-
-[ ] Disable firewall ports except GW (https) and controller (ssh)
-
-[ ] Download AWS repo and run scripts directly within

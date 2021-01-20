@@ -1,4 +1,3 @@
-
 # Controller Public IP
 resource "azurerm_public_ip" "controllerpip" {
     count = var.create_eip_controller ? 1 : 0
@@ -6,6 +5,7 @@ resource "azurerm_public_ip" "controllerpip" {
     location                     = azurerm_resource_group.resourcegroup.location
     resource_group_name          = azurerm_resource_group.resourcegroup.name
     allocation_method            = "Dynamic"
+    domain_name_label            = "ctr-${var.project_id}"
 }
 
 # Controller NIC
@@ -43,7 +43,7 @@ resource "azurerm_linux_virtual_machine" "controller" {
     source_image_reference {
         publisher = "OpenLogic"
         offer     = "CentOS"
-        sku       = "7-CI"
+        sku       = "7_8"
         version   = "latest"
     }
     boot_diagnostics {

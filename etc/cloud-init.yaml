@@ -1,37 +1,27 @@
 #cloud-config
-# users:
-#   - default
-#   - name: bluedata
-#     groups: [sudo, wheel]
-#     shell: /bin/bash
-#     sudo: ['ALL=(ALL) NOPASSWD:ALL']
-#     ssh-authorized-keys: 
-#       - PUB_KEY
 
 package_upgrade: true
-# runcmd:
-#   - sudo yum install -y python-pip
-#   - sudo yum install -y python-setuptools
-#   - pip install --upgrade pip
-#   - pip install --upgrade setuptools
 
-# packages:
-#   - epel-release
+packages:
+ - epel-release
+
 repo_update: true
+
 repo_upgrade: all
-# runcmd:
-#   - sudo sed -i --follow-symlinks 's/^SELINUX=.*/SELINUX=disabled/g' /etc/sysconfig/selinux
 
-# disk_setup:
-#   ephemeral0:
-#     table_type: gpt
-#     layout: [[100,82]]
-#     overwrite: true
-# fs_setup:
-#   - device: ephemeral0.1
-#     filesystem: swap
-# mounts:
-#   - ["ephemeral0.1", "none", "swap", "sw", "0", "0"]
+runcmd:
+ - "yum update -y -q"
+ - "yum install -y cloud-utils-growpart"
+ - "growpart /dev/sda 2"
+ - "xfs_growfs /"
 
-# power_state:
-#   mode: reboot
+disk_setup:
+ ephemeral0:
+  table_type: gpt
+  layout: [[100,82]]
+  overwrite: true
+  fs_setup:
+   - device: ephemeral0.1
+     filesystem: swap
+  mounts:
+   - ["ephemeral0.1", "none", "swap", "sw", "0", "0"]

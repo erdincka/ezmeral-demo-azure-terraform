@@ -10,10 +10,10 @@ tenant_id       = ""
 region = "eastus2"
 
 #
-# Set this to something meaningful.  it is used as a tag in Azure
+# Set this to something DNS/screen friendly
+# This will be used for external host and resource naming
 #
 project_id         = "ecp-demo"
-user               = "centos"
 
 # you may need to change the instance types if
 # the defaults are not available in your region
@@ -34,14 +34,19 @@ epic_dl_url          = ""
 # specify how many MAPR instances you want (0 or 3)
 mapr_cluster_1_count         = 0                     # How many hosts do you want for MAPR CLUSTER 1? (0 or 3)
 mapr_cluster_2_count         = 0                     # How many hosts do you want for MAPR CLUSTER 2? (0 or 3)
+gpu_worker_count = 0
 
 # DON'T CHANGE
 selinux_disabled = true
+nfs_server_enabled = false
 ad_server_enabled = false
 
-rdp_server_enabled = true # Do not disable this unless you are doing a manual installation
+rdp_server_enabled = false # Do not disable this unless you are doing a manual installation
 rdp_server_operating_system = "LINUX"
-create_eip_rdp_linux_server = true
+
+create_eip_rdp_linux_server = false
+create_eip_gateway = true
+create_eip_controller = true
 
 ca_key = <<EOF
 -----BEGIN RSA PRIVATE KEY-----

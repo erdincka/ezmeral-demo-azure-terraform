@@ -23,7 +23,7 @@ resource "azurerm_network_interface" "gatewaynic" {
 
 # Gateway VM
 resource "azurerm_linux_virtual_machine" "gateway" {
-    name                  = "gateway"
+    name                  = "gateway-${var.project_id}"
     computer_name         = var.project_id // to avoid gateway name for vnet
     location              = azurerm_resource_group.resourcegroup.location
     resource_group_name   = azurerm_resource_group.resourcegroup.name
@@ -38,13 +38,13 @@ resource "azurerm_linux_virtual_machine" "gateway" {
     os_disk {
         name              = "gateway-os-disk"
         caching           = "ReadWrite"
-        disk_size_gb      = "400"
+        disk_size_gb      = 400
         storage_account_type = "Standard_LRS"
     }
     source_image_reference {
         publisher = "OpenLogic"
         offer     = "CentOS"
-        sku       = "7-CI"
+        sku       = "7_8"
         version   = "latest"
     }
     boot_diagnostics {

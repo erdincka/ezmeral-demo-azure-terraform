@@ -3,12 +3,12 @@
 set -e # abort on error
 set -u # abort on undefined variable
 
-aws_repodir="./hcp-demo-env-aws-terraform"
-aws_repourl="https://github.com/hpe-container-platform-community/hcp-demo-env-aws-terraform"
+downstream_repodir="./hcp-demo-env-aws-terraform"
+downstream_repourl="https://github.com/hpe-container-platform-community/hcp-demo-env-aws-terraform"
 
-[ -d ${aws_repodir} ] || git clone "${aws_repourl}" "${aws_repodir}"
+[ -d ${downstream_repodir} ] || git clone "${downstream_repourl}" "${downstream_repodir}"
 
-source "${aws_repodir}/scripts/functions.sh"
+source "${downstream_repodir}/scripts/functions.sh"
 ./scripts/check_prerequisites.sh # from Azure repo
 
 print_header "Starting to create infrastructure with Terraform"
@@ -44,15 +44,20 @@ terraform apply -var-file=./etc/bluedata_infra.tfvars -var-file=./etc/my.tfvars 
 ### For testing
 # terraform plan -var-file=./etc/bluedata_infra.tfvars -var-file=./etc/my.tfvars
 
-echo "Sleeping for 60s to give services a chance to startup"
-sleep 60
+echo "Sleeping for 120s to give cloud-init and services a chance to finalize"
+sleep 120
 
 print_header "Saving terraform output to generated/output.json"
 terraform output -json > "./generated/output.json"
 
 # Now we switch to AWS repo
-ln -s ../generated "${aws_repodir}/"
-pushd ${aws_repodir}
+pushd ${downstream_repodir}
+rm -f ./generated && ln -s ../generated .
+### Fix for Azure VM disk naming
+sed -i '' -e 's/nvme1n1/sdc/g' -e 's/nvme2n1/sdd/g' ./bin/experimental/03_k8sworkers_add.sh
+sed -i '' -e 's/nvme1n1/sdc/g' -e 's/nvme2n1/sdd/g' ./bin/experimental/epic_workers_add.sh  
+# workaround for script
+sed -i '' 's/apt /apt -y /g' ./modules/module-rdp-server-linux/ca-certs-setup.sh
 
 print_header "Running ./scripts/post_refresh_or_apply.sh"
 ./scripts/post_refresh_or_apply.sh

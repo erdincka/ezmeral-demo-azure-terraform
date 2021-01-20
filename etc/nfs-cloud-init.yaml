@@ -1,0 +1,16 @@
+#cloud-config
+
+packages:
+ - epel-release
+
+repo_update: true
+
+repo_upgrade: all
+
+runcmd:
+ - "yum update -y -q"
+ - "yum -y -q install nfs-utils"
+ - "mkdir /nfsroot"
+ - "echo '/nfsroot *(rw,no_root_squash,no_subtree_check)' | tee /etc/exports"
+ - "exportfs -r"
+ - "systemctl enable --now nfs-server.service"

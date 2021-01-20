@@ -6,20 +6,24 @@ variable "client_secret" { }
 variable "tenant_id" { }
 variable "cloud_init_file" { default = "./etc/cloud-init.yaml" }
 variable "rdp_cloud_init_file" { default = "./etc/rdp-cloud-init.yaml" }
+variable "ad_cloud_init_file" { default = "./etc/ad-cloud-init.yaml" }
+variable "nfs_cloud_init_file" { default = "./etc/nfs-cloud-init.yaml" }
+### TODO: replace this with Azure-provided domain 
 variable "hcpdomain" { default = "internal.cloudapp.net" } # using default Azure AD domain for VNet
+variable "downstream_repo_dir" { default = "hcp-demo-env-aws-terraform" }
 
 variable "profile" { default = "default" } # kept for AWS script compatibility
 variable "az" { default = "none" } # kept for AWS script compatibility
 variable "project_id" { }
-variable "user" { }
+variable "user" { default = "centos" }
 variable "client_cidr_block" { default = "none" }  # kept for AWS script compatibility
 variable "check_client_ip" { default = "false" }  # kept for AWS script compatibility
 variable "additional_client_ip_list" { default = [] }  # kept for AWS script compatibility
-variable "vpc_cidr_block" { default = "10.1.0.0/16" }  # kept for AWS script compatibility
-variable "subnet_cidr_block" { default = "10.1.1.0/24" }  # kept for AWS script compatibility
+variable "vpc_cidr_block" { default = "10.1.0.0/16" } 
+variable "subnet_cidr_block" { default = "10.1.1.0/24" }
 
 variable "create_eip_controller" { 
-  default = false
+  default = true
 }
 
 variable "create_eip_gateway" { 
@@ -27,7 +31,7 @@ variable "create_eip_gateway" {
 }
 
 variable "create_eip_rdp_linux_server" { 
-  default = true
+  default = false
 }
 
 ### TODO: Not implemented for Azure. Kept for AWS script compatibility
@@ -80,13 +84,17 @@ variable "gpu_worker_has_disk_for_df" {
   default = false
 } 
 
-variable "gtw_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
-variable "ctr_instance_type" { default = "Standard_A8m_v2" } ## 8c 64GB
-variable "wkr_instance_type" { default = "Standard_A4m_v2" } ## 4c 32GB
-# variable "nfs_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
-# variable "ad_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
+variable "gtw_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+# variable "gtw_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
+variable "ctr_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+# variable "ctr_instance_type" { default = "Standard_A8m_v2" } ## 8c 64GB
+variable "wkr_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+# variable "wkr_instance_type" { default = "Standard_A8m_v2" } ## 8c 64GB
+variable "nfs_instance_type" { default = "Standard_B1ms" } ## 1c 2GB
+variable "ad_instance_type" { default = "Standard_B1ms" } ## 1c 2GB
 variable "rdp_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
-variable "mapr_instance_type" { default = "Standard_A4m_v2" } ## 4c 32GB
+variable "mapr_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+# variable "mapr_instance_type" { default = "Standard_A4m_v2" } ## 4c 32GB
 
 variable "epic_dl_url" { }
 variable "epid_dl_url_needs_presign" { default = false }

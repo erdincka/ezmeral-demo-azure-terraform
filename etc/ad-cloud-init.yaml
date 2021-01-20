@@ -1,0 +1,18 @@
+#cloud-config
+
+packages:
+ - epel-release
+
+repo_update: true
+
+repo_upgrade: all
+
+runcmd:
+ - "yum update -y -q"
+ - "yum install -y -q docker openldap-clients"
+ - "service docker start"
+ - "systemctl enable docker"
+ - "while [ ! -f /home/centos/run_ad.sh ]; do sleep 2; done"
+ - "sudo -u centos /bin/bash /home/centos/run_ad.sh"
+ - "sleep 120"
+ - "sudo -u centos /bin/bash /home/centos/ldif_modify.sh"
