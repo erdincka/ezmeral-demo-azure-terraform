@@ -7,9 +7,14 @@ downstream_repodir="./hcp-demo-env-aws-terraform"
 downstream_repourl="https://github.com/hpe-container-platform-community/hcp-demo-env-aws-terraform"
 
 [ -d ${downstream_repodir} ] || git clone "${downstream_repourl}" "${downstream_repodir}"
+### Fix for Azure VM disk naming
+sed -i '' -e 's/nvme1n1/sdc/g' -e 's/nvme2n1/sdd/g' ${downstream_repodir}/bin/experimental/03_k8sworkers_add.sh
+sed -i '' -e 's/nvme1n1/sdc/g' -e 's/nvme2n1/sdd/g' ${downstream_repodir}/bin/experimental/epic_workers_add.sh  
+# workaround for the script conflicting with cloud-init
+sed -i '' 's/apt/sudo apt \-y/g' ${downstream_repodir}/modules/module-rdp-server-linux/ca-certs-setup.sh
 
 source "${downstream_repodir}/scripts/functions.sh"
-./scripts/check_prerequisites.sh # from Azure repo
+./scripts/check_prerequisites.sh # for Azure
 
 print_header "Starting to create infrastructure with Terraform"
 if [[ -f terraform.tfstate ]]; then
@@ -52,12 +57,7 @@ terraform output -json > "./generated/output.json"
 
 # Now we switch to AWS repo
 pushd ${downstream_repodir}
-rm -f ./generated && ln -s ../generated .
-### Fix for Azure VM disk naming
-sed -i '' -e 's/nvme1n1/sdc/g' -e 's/nvme2n1/sdd/g' ./bin/experimental/03_k8sworkers_add.sh
-sed -i '' -e 's/nvme1n1/sdc/g' -e 's/nvme2n1/sdd/g' ./bin/experimental/epic_workers_add.sh  
-# workaround for script
-sed -i '' 's/apt /apt -y /g' ./modules/module-rdp-server-linux/ca-certs-setup.sh
+ln -s ../generated .
 
 print_header "Running ./scripts/post_refresh_or_apply.sh"
 ./scripts/post_refresh_or_apply.sh

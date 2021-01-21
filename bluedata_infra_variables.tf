@@ -31,7 +31,7 @@ variable "create_eip_gateway" {
 }
 
 variable "create_eip_rdp_linux_server" { 
-  default = false
+  default = true
 }
 
 ### TODO: Not implemented for Azure. Kept for AWS script compatibility
@@ -102,8 +102,8 @@ variable "epic_dl_url_presign_options" { default = "" }
 variable "epic_options" { default = "--skipeula --default-password admin123" }
 variable "selinux_disabled" { default = true }
 
-variable "nfs_server_enabled" { default = false }
-variable "ad_server_enabled" { default = false }
+variable "nfs_server_enabled" { default = true }
+variable "ad_server_enabled" { default = true }
 
 variable "dns_zone_name" {
   default = "samdom.example.com"

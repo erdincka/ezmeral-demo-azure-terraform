@@ -74,8 +74,8 @@ resource "azurerm_linux_virtual_machine" "rdp_server" {
     }
     source_image_reference {
         publisher = "Canonical"
-        offer     = "0001-com-ubuntu-server-focal"
-        sku       = "20_04-LTS"
+        offer     = "UbuntuServer"
+        sku       = "18.04-LTS"
         version   = "latest"
     }
     boot_diagnostics {

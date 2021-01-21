@@ -8,8 +8,7 @@ repo_update: true
 repo_upgrade: all
 
 runcmd:
- - "apt upgrade -y"
- - "apt install -y xdg-utils python3-pip"
+ - "apt install -y xdg-utils python3-pip libnss3-tools"
  - "tmux new-session -d -s mySession -n myWindow && sudo tmux send-keys -t mySession:myWindow \"fastdd\" Enter"
  - "sed -i 's/1/0/g' /etc/apt/apt.conf.d/20auto-upgrades"
  - "apt -qq -y update"

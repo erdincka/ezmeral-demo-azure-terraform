@@ -4,6 +4,8 @@ set -e # abort on error
 set -u # abort on undefined variable
 
 ostype=$(uname -s | tr '[:upper:]' '[:lower:]')
+downstream_repodir="./hcp-demo-env-aws-terraform"
+source "${downstream_repodir}/scripts/functions.sh"
 
 function fail {
   echo >&2 "FAIL: ${1}"
@@ -23,41 +25,35 @@ check_command curl
 check_command terraform
 check_command az
 
-if [ -f "${HOME}/.bashrc" ] && [ ! -f "${HOME}/.bash_profile" ]; then
-    profile='~/.bashrc'
-else
-    profile='~/.bash_profile'
+# New MacOS uses zsh
+if [ "/bin/zsh" == "$SHELL" ]; then
+  PROFILE_NAME=.zshrc
+elif [ "/bin/bash" == "$SHELL" ]; then
+  PROFILE_NAME=.bashrc
 fi
+PROFILE_PATH=$HOME/$PROFILE_NAME
+# if [ -f "${HOME}/.bashrc" ] && [ ! -f "${HOME}/.bash_profile" ]; then
+#     profile='~/.bashrc'
+# else
+#     profile='~/.bash_profile'
+# fi
 
 # Ensure python is able to find packages
 REQUIRED_PATH="$(python3 -m site --user-base)/bin"
 if [[ :$PATH: != *:"$REQUIRED_PATH":* ]] ; then
-    tput setaf 1
-    print_term_width '='
-    echo "Aborting because PATH variable does not include: $REQUIRED_PATH"
-    print_term_width '='
-    tput sgr0
+    echo "Your path should include ${REQUIRED_PATH}"
+    echo 
+    echo "add using 'echo export PATH=\$PATH:$REQUIRED_PATH >> $PROFILE_PATH'"
     echo
-    echo "TIP: You can set the PATH for the current terminal session by running the following command:"
-    echo
-    echo "   export PATH=\$PATH:$REQUIRED_PATH"
-    echo
-    echo "To make the PATH setting permanent, add the above line to your ${profile}, e.g."
-    echo
-    echo "   echo 'export PATH=\$PATH:$REQUIRED_PATH' >> ${profile}"
-    echo
-    print_term_width '-'
     exit 1
 fi
 
 python3 -m ipcalc > /dev/null || {
-    echo "I require 'ipcalc' python module, but it's not installed.  Aborting."
-    echo "Please install with: 'pip3 install --user ipcalc six'"
-    exit 1
+    echo "Installing 'ipcalc' python module"
+    pip3 install --user ipcalc six
 }
 
-command -v hpecp > /dev/null || {
-    echo "I require 'hpecp' python module, but it's not installed.  Aborting."
-    echo "Please install with: 'pip3 install --user --upgrade hpecp'"
-    exit 1
+check_command hpecp > /dev/null || {
+    echo "Installing 'hpecp' python module."
+    pip3 install --user --upgrade hpecp
 }
