@@ -45,9 +45,7 @@ if [[ ! -f  "./generated/controller.prv_key" ]]; then
    chmod 600 "./generated/controller.prv_key"
 fi
 
-terraform apply -var-file=./etc/bluedata_infra.tfvars -var-file=./etc/my.tfvars -auto-approve=true
-### For testing
-# terraform plan -var-file=./etc/bluedata_infra.tfvars -var-file=./etc/my.tfvars
+terraform apply -var-file=./etc/bluedata_infra.tfvars -auto-approve=true # -var-file=./etc/my.tfvars 
 
 echo "Sleeping for 120s to give cloud-init and services a chance to finalize"
 sleep 120
@@ -69,7 +67,7 @@ print_header "Installing HPECP CLI on Controller"
 ./bin/experimental/install_hpecp_cli.sh 
 
 ### OPTIONAL: enable for initial env creation
-mv "./etc/postcreate.sh_template" "./etc/postcreate.sh"
+# mv "./etc/postcreate.sh_template" "./etc/postcreate.sh"
 
 if [[ -f "./etc/postcreate.sh" ]]; then
    print_header "Found ./etc/postcreate.sh so executing it"

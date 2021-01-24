@@ -70,6 +70,11 @@ This step might take somewhere between 45 minutes to 2 hours, please monitor the
 
 You can edit ./etc/bluedata_infra.tfvars to choose some options, such as enabling RDP server, AD server, NFS server etc.
 
+If you want clean installation and not all the demo scenarios, comment out following line in ./bin/azure_create_new.sh:
+```
+mv "./etc/postcreate.sh_template" "./etc/postcreate.sh"
+```
+
 If you wish to re-configure, make changes and run ```terraform apply``` to reflect these changes in the resources.
 
 Alternatively, you can switch to "./hcp-demo-env-aws-terraform" folder and run scripts in ./bin directory (please run scripts on this upstream repo top level directory, ie, within ./hcp-demo-env-aws-terraform).
