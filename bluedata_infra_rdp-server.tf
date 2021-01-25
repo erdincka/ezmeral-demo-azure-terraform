@@ -210,6 +210,6 @@ resource "azurerm_network_interface_security_group_association" "nsgforrdp_serve
 }
 
 data "azurerm_public_ip" "rdp_public_ip" {
-  name                = azurerm_public_ip.rdp_serverpip[0].name
+  name                = var.create_eip_rdp_linux_server ? azurerm_public_ip.rdp_serverpip.0.name : null
   resource_group_name = azurerm_resource_group.resourcegroup.name
 }

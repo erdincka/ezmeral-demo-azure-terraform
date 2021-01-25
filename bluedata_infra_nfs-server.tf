@@ -53,5 +53,5 @@ resource "azurerm_linux_virtual_machine" "nfs_server" {
 
 data "azurerm_public_ip" "nfs_public_ip" {
   name                = azurerm_public_ip.nfs_serverpip.name
-  resource_group_name = azurerm_linux_virtual_machine.nfs_server[0].resource_group_name
+  resource_group_name = azurerm_resource_group.resourcegroup.name
 }
