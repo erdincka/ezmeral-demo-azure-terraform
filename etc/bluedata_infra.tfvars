@@ -38,13 +38,13 @@ gpu_worker_count = 0
 
 # DON'T CHANGE
 selinux_disabled = true
-nfs_server_enabled = false
-ad_server_enabled = false
+nfs_server_enabled = true
+ad_server_enabled = true
 
-rdp_server_enabled = false # Do not disable this unless you are doing a manual installation
+rdp_server_enabled = true # Do not disable this unless you are doing a manual installation
 rdp_server_operating_system = "LINUX"
 
-create_eip_rdp_linux_server = false
+create_eip_rdp_linux_server = true
 create_eip_gateway = true
 create_eip_controller = true
 
