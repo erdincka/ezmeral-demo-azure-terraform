@@ -84,16 +84,16 @@ variable "gpu_worker_has_disk_for_df" {
   default = false
 } 
 
-variable "gtw_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
-# variable "gtw_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
-variable "ctr_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+# variable "gtw_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+variable "gtw_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
+variable "ctr_instance_type" { default = "Standard_B20ms" } ## 20c 80GB
 # variable "ctr_instance_type" { default = "Standard_A8m_v2" } ## 8c 64GB
-variable "wkr_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+variable "wkr_instance_type" { default = "Standard_B20ms" } ## 20c 80GB
 # variable "wkr_instance_type" { default = "Standard_A8m_v2" } ## 8c 64GB
 variable "nfs_instance_type" { default = "Standard_B1ms" } ## 1c 2GB
 variable "ad_instance_type" { default = "Standard_B1ms" } ## 1c 2GB
 variable "rdp_instance_type" { default = "Standard_B4ms" } ## 4c 16GB
-variable "mapr_instance_type" { default = "Standard_B16ms" } ## 16c 64GB
+variable "mapr_instance_type" { default = "Standard_B20ms" } ## 20c 80GB
 # variable "mapr_instance_type" { default = "Standard_A4m_v2" } ## 4c 32GB
 
 variable "epic_dl_url" { }
@@ -104,6 +104,8 @@ variable "selinux_disabled" { default = true }
 
 variable "nfs_server_enabled" { default = true }
 variable "ad_server_enabled" { default = true }
+variable "ad_member_group" { default = "DemoTenantUsers" }
+variable "ad_admin_group" { default = "DemoTenantAdmins" }
 
 variable "dns_zone_name" {
   default = "samdom.example.com"

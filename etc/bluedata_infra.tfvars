@@ -1,7 +1,7 @@
 # Azure Subscription and Service Principle for azurerm provider https://docs.microsoft.com/en-us/azure/developer/terraform/get-started-cloud-shell
 subscription_id = ""
-client_id       = ""
-client_secret   = ""
+client_id       = "" // tenantId
+client_secret   = "" // password
 tenant_id       = ""
 
 #
@@ -40,6 +40,7 @@ gpu_worker_count = 0
 selinux_disabled = true
 nfs_server_enabled = true
 ad_server_enabled = true
+ad_admin_group = "DemoTenantAdmins"
 
 rdp_server_enabled = true # Do not disable this unless you are doing a manual installation
 rdp_server_operating_system = "LINUX"

@@ -31,10 +31,10 @@ az account set --subscription="${SUBSCRIPTION_ID}"
 
 Create a service principle to be used for this deployment
 ```
-az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/${SUBSCRIPTION_ID}"
+az ad sp create-for-rbac --role="Contributor" --scopes="/subscriptions/${SUBSCRIPTION_ID}" -o table
 ```
 
-The output should be used to fill in provider details in terraform.tfvars
+The output should be used to fill in provider details in ./etc/bluedata_infra.tfvars
 Save appId, password, sp_name & tenant from response
 
 ```

@@ -321,5 +321,6 @@ output "rdp_server_private_ip" {
     value = var.rdp_server_enabled ? azurerm_network_interface.rdp_servernic.private_ip_address : "rdp server not enabled"
 }
 output "rdp_server_admin_password" {
-  value = var.rdp_server_enabled ? random_password.rdp_admin_password.result : "rdp server not enabled"  
+  sensitive = true
+  value = var.rdp_server_enabled ? random_password.rdp_admin_password.result : "rdp server not enabled"
 }
