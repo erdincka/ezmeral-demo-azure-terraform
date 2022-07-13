@@ -1,5 +1,8 @@
 # ECP Azure-Terraform
 
+## No longer maintained, replaced with [Ezdemo](https://github.com/HewlettPackard/ezdemo)
+
+
 ## Overview
 
 ### Setup HPE Ezmeral Container Platform (ECP) demo environment on Azure with Terraform
